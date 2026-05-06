@@ -9,7 +9,7 @@
 <body>
 <header>
   <h1>📚 データベース体験</h1>
-  <p class="subtitle">図書館情報技術論 第4回 ／ リレーショナル・データベースの仕組みを体験する</p>
+  <p class="subtitle">図書館情報技術論 ／ リレーショナル・データベースの仕組みを体験する</p>
 </header>
 
 <nav class="tabs">
@@ -56,7 +56,7 @@
   <!-- ② 著者 -->
   <section id="authors" class="panel">
     <h2>② 著者テーブル</h2>
-    <p>本の著者を登録するテーブルです。書籍テーブルの「著者ID」がここの ID を参照します。</p>
+    <p>本の著者を登録するテーブルです。著者IDが書籍テーブルに登録された本と結びついています。</p>
 
     <div class="card">
       <h3>新しい著者を追加</h3>
@@ -65,8 +65,8 @@
         <label>ヨミ <input type="text" name="kana" placeholder="例：ナツメ ソウセキ"></label>
         <label>ローマ字表記 <input type="text" name="roman" placeholder="例：Natsume Soseki"></label>
         <label>別名 <input type="text" name="aliases" placeholder="例：夏目金之助"></label>
-        <label>生年 <input type="number" name="birth" placeholder="例：1867"></label>
-        <label>没年 <input type="number" name="death" placeholder="例：1916"></label>
+        <label>生年 <input type="text" name="birth" class="year-input" inputmode="numeric" pattern="[1-9][0-9]{0,3}" maxlength="4" placeholder="例：1867"></label>
+        <label>没年 <input type="text" name="death" class="year-input" inputmode="numeric" pattern="[1-9][0-9]{0,3}" maxlength="4" placeholder="例：1916"></label>
         <button type="submit" class="btn-primary">追加</button>
       </form>
     </div>
@@ -84,7 +84,7 @@
   <!-- ③ 所蔵 -->
   <section id="holdings" class="panel">
     <h2>③ 所蔵テーブル</h2>
-    <p>書籍と配架場所を組み合わせて、図書館が実際に所蔵している1冊ずつを登録します。</p>
+    <p>書籍と配架場所を組み合わせて、図書館が実際に所蔵している1冊ずつを登録します。同じ本を複数購入した場合も、別の所蔵IDをつけることで管理できます</p>
 
     <div class="card">
       <h3>新しい所蔵を追加</h3>
@@ -120,21 +120,13 @@
   <!-- ④ 利用者 -->
   <section id="users" class="panel">
     <h2>④ 利用者テーブル</h2>
-    <p>貸出を記録するときに選ぶ利用者を登録します。</p>
+    <p>図書館の利用者を登録します。</p>
 
     <div class="card">
       <h3>新しい利用者を追加</h3>
       <form id="userForm" class="form-inline">
         <label>学籍番号 <input type="text" name="studentNumber" required placeholder="例：AG20L001"></label>
-        <label>学部
-          <select name="faculty" required>
-            <option value="文学部">文学部</option>
-            <option value="情報学部">情報学部</option>
-            <option value="教育学部">教育学部</option>
-            <option value="芸術学部">芸術学部</option>
-            <option value="理学部">理学部</option>
-          </select>
-        </label>
+        <label>学部 <input type="text" name="faculty" required placeholder="例：文学部"></label>
         <label>氏名 <input type="text" name="name" required placeholder="例：山田太郎"></label>
         <button type="submit" class="btn-primary">追加</button>
       </form>
@@ -190,15 +182,35 @@
     <h2>⑥ 検索</h2>
 
     <div class="card">
-      <h3>著者検索</h3>
-      <form id="searchForm" class="form-inline">
-        <label>著者キーワード <input type="text" id="searchInput" placeholder="名前・ヨミ・ローマ字表記・別名で検索"></label>
+      <h3>キーワード検索</h3>
+      <form id="bookSearchForm" class="form-inline">
+        <label>キーワード <input type="text" id="bookSearchInput" placeholder="タイトル・著者名・出版社で検索"></label>
         <button type="submit" class="btn-primary">検索</button>
       </form>
-      <table id="searchResult">
-        <thead><tr><th>著者ID</th><th>名前</th><th>ヨミ</th><th>ローマ字表記</th><th>別名</th><th>生没年</th><th>著作</th></tr></thead>
+      <table id="bookSearchResult">
+        <thead><tr><th>書籍ID</th><th>タイトル</th><th>著者名</th><th>出版社</th><th>出版年</th><th>所蔵数</th></tr></thead>
         <tbody></tbody>
       </table>
+    </div>
+
+    <div class="card">
+      <h3>著者検索</h3>
+      <form id="authorSearchForm" class="form-inline">
+        <label>著者キーワード <input type="text" id="authorSearchInput" placeholder="名前・ヨミ・ローマ字表記・別名で検索"></label>
+        <button type="submit" class="btn-primary">検索</button>
+      </form>
+      <table id="authorSearchResult">
+        <thead><tr><th>著者ID</th><th>名前</th><th>ヨミ</th><th>ローマ字表記</th><th>別名</th><th>生没年</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div id="selectedAuthorBooksPanel" class="search-detail" hidden>
+        <h3 id="selectedAuthorTitle">該当する書籍</h3>
+        <table id="selectedAuthorBooks">
+          <thead><tr><th>書籍ID</th><th>タイトル</th><th>出版社</th><th>出版年</th><th>所蔵数</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -216,10 +228,6 @@
       <table id="byAuthor"><thead><tr><th>著者ID</th><th>著者</th><th>蔵書数</th></tr></thead><tbody></tbody></table>
     </div>
 
-    <div class="card">
-      <h3>利用者登録数</h3>
-      <p class="stat-number" id="userTotal">0人</p>
-    </div>
   </section>
 </main>
 

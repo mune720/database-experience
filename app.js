@@ -264,8 +264,14 @@ function normalizeId(value) {
 
 function parseOptionalYear(value) {
   if (value === null || value === undefined || value === '') return null;
-  const year = Number(value);
-  return Number.isInteger(year) ? year : null;
+  const text = String(value).trim();
+  if (!/^[1-9][0-9]{0,3}$/.test(text)) return null;
+  return Number(text);
+}
+
+function sanitizeYearInput(input) {
+  input.value = input.value.replace(/\D/g, '').slice(0, 4);
+  if (input.value === '0') input.value = '';
 }
 
 function formatId(type, id) {
@@ -317,6 +323,10 @@ document.body.addEventListener('click', e => {
   setTimeout(() => {
     document.querySelector(`#${target} input, #${target} select`)?.focus();
   }, 50);
+});
+
+document.querySelectorAll('.year-input').forEach(input => {
+  input.addEventListener('input', () => sanitizeYearInput(input));
 });
 
 // === 著者 ===
@@ -640,45 +650,166 @@ document.body.addEventListener('click', e => {
 });
 
 // === 検索 ===
-function renderAuthorSearchResults(query = currentAuthorQuery()) {
-  const tbody = document.querySelector('#searchResult tbody');
-  if (!tbody) return;
-  const q = query.trim().toLowerCase();
-  const authors = q ? db.authors.filter(author => authorMatches(author, q)) : db.authors;
+let bookSearchSubmitted = false;
+let authorSearchSubmitted = false;
+let selectedAuthorId = null;
 
+function currentBookQuery() {
+  return document.getElementById('bookSearchInput')?.value || '';
+}
+
+function currentAuthorQuery() {
+  return document.getElementById('authorSearchInput')?.value || '';
+}
+
+function renderBookSearchResults() {
+  const tbody = document.querySelector('#bookSearchResult tbody');
+  if (!tbody) return;
+  const q = currentBookQuery().trim().toLowerCase();
   tbody.innerHTML = '';
+
+  if (!bookSearchSubmitted) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">キーワードを入力して検索してください</td></tr>';
+    return;
+  }
+  if (!q) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">キーワードを入力してください</td></tr>';
+    return;
+  }
+
+  const books = db.books.filter(book => bookMatchesSearch(book, q));
+  if (books.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">該当なし</td></tr>';
+    return;
+  }
+
+  books.forEach(book => {
+    const author = findAuthor(book.authorId);
+    const holdingCount = db.holdings.filter(holding => holding.bookId === book.id).length;
+    tbody.innerHTML += `<tr>
+      <td><span class="fk-link">${formatId('books', book.id)}</span></td>
+      <td>${escapeHtml(book.title)}</td>
+      <td>${author ? escapeHtml(author.name) : '<em>(著者不明)</em>'}</td>
+      <td>${escapeHtml(book.publisher ?? '')}</td>
+      <td>${book.year ?? ''}</td>
+      <td>${holdingCount} 冊</td>
+    </tr>`;
+  });
+}
+
+function bookMatchesSearch(book, q) {
+  const author = findAuthor(book.authorId);
+  return [
+    book.title,
+    book.publisher,
+    book.year,
+    author?.name,
+    author?.kana,
+    author?.roman,
+    author?.aliases
+  ].some(value => String(value || '').toLowerCase().includes(q));
+}
+
+function renderAuthorSearchResults() {
+  const tbody = document.querySelector('#authorSearchResult tbody');
+  if (!tbody) return;
+  const q = currentAuthorQuery().trim().toLowerCase();
+  tbody.innerHTML = '';
+
+  if (!authorSearchSubmitted) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">著者キーワードを入力して検索してください</td></tr>';
+    renderSelectedAuthorBooks();
+    return;
+  }
+  if (!q) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">著者キーワードを入力してください</td></tr>';
+    selectedAuthorId = null;
+    renderSelectedAuthorBooks();
+    return;
+  }
+
+  const authors = db.authors.filter(author => authorMatches(author, q));
   if (authors.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">該当なし</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">該当なし</td></tr>';
+    selectedAuthorId = null;
+    renderSelectedAuthorBooks();
     return;
   }
 
   authors.forEach(author => {
-    const books = db.books
-      .filter(book => book.authorId === author.id)
-      .map(book => {
-        const holdings = db.holdings.filter(holding => holding.bookId === book.id).length;
-        return `${formatId('books', book.id)} ${escapeHtml(book.title)}（所蔵${holdings}冊）`;
-      })
-      .join('<br>');
-    tbody.innerHTML += `<tr>
+    const selectedClass = author.id === selectedAuthorId ? ' selected' : '';
+    tbody.innerHTML += `<tr class="clickable-row${selectedClass}" data-author-id="${author.id}">
       <td><span class="fk-link">${formatId('authors', author.id)}</span></td>
       <td>${escapeHtml(author.name)}</td>
       <td>${escapeHtml(author.kana)}</td>
       <td>${escapeHtml(author.roman)}</td>
       <td>${escapeHtml(author.aliases || '')}</td>
       <td>${formatLifeSpan(author)}</td>
-      <td>${books || '<span class="empty">著作なし</span>'}</td>
+    </tr>`;
+  });
+
+  renderSelectedAuthorBooks();
+}
+
+function renderSelectedAuthorBooks() {
+  const panel = document.getElementById('selectedAuthorBooksPanel');
+  const title = document.getElementById('selectedAuthorTitle');
+  const tbody = document.querySelector('#selectedAuthorBooks tbody');
+  if (!panel || !title || !tbody) return;
+
+  if (!selectedAuthorId) {
+    panel.hidden = true;
+    tbody.innerHTML = '';
+    return;
+  }
+
+  const author = findAuthor(selectedAuthorId);
+  if (!author) {
+    panel.hidden = true;
+    tbody.innerHTML = '';
+    return;
+  }
+
+  panel.hidden = false;
+  title.textContent = `${author.name}の書籍`;
+  const books = db.books.filter(book => book.authorId === author.id);
+  tbody.innerHTML = '';
+
+  if (books.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">該当する書籍がありません</td></tr>';
+    return;
+  }
+
+  books.forEach(book => {
+    const holdingCount = db.holdings.filter(holding => holding.bookId === book.id).length;
+    tbody.innerHTML += `<tr>
+      <td><span class="fk-link">${formatId('books', book.id)}</span></td>
+      <td>${escapeHtml(book.title)}</td>
+      <td>${escapeHtml(book.publisher ?? '')}</td>
+      <td>${book.year ?? ''}</td>
+      <td>${holdingCount} 冊</td>
     </tr>`;
   });
 }
 
-function currentAuthorQuery() {
-  return document.getElementById('searchInput')?.value || '';
-}
-
-document.getElementById('searchForm').addEventListener('submit', e => {
+document.getElementById('bookSearchForm').addEventListener('submit', e => {
   e.preventDefault();
-  renderAuthorSearchResults(currentAuthorQuery());
+  bookSearchSubmitted = true;
+  renderBookSearchResults();
+});
+
+document.getElementById('authorSearchForm').addEventListener('submit', e => {
+  e.preventDefault();
+  authorSearchSubmitted = true;
+  selectedAuthorId = null;
+  renderAuthorSearchResults();
+});
+
+document.querySelector('#authorSearchResult tbody').addEventListener('click', e => {
+  const row = e.target.closest('[data-author-id]');
+  if (!row) return;
+  selectedAuthorId = parseInt(row.dataset.authorId, 10);
+  renderAuthorSearchResults();
 });
 
 function authorMatches(author, q) {
@@ -708,8 +839,6 @@ function renderStats() {
       ba.innerHTML += `<tr><td>${formatId('authors', author.id)}</td><td>${escapeHtml(author.name)}</td><td>${n} 冊</td></tr>`;
     });
   }
-
-  document.getElementById('userTotal').textContent = `${db.users.length}人`;
 }
 
 // === リセット ===
@@ -744,6 +873,7 @@ function renderAll() {
   renderHoldings();
   renderUsers();
   renderLoans();
+  renderBookSearchResults();
   renderAuthorSearchResults();
   renderStats();
 }
