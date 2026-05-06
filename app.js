@@ -279,20 +279,64 @@ function formatId(type, id) {
   return `${ID_PREFIX[type]}${String(id).padStart(4, '0')}`;
 }
 
+let renderContext = null;
+
+function mapById(records) {
+  const map = new Map();
+  records.forEach(record => {
+    if (!map.has(record.id)) map.set(record.id, record);
+  });
+  return map;
+}
+
+function createRenderContext() {
+  const authorsById = mapById(db.authors);
+  const booksById = mapById(db.books);
+  const holdingsById = mapById(db.holdings);
+  const usersById = mapById(db.users);
+  const booksByAuthorId = new Map();
+  const holdingsByBookId = new Map();
+  const loanedHoldingIds = new Set(db.loans.map(loan => loan.holdingId));
+
+  db.books.forEach(book => {
+    if (!booksByAuthorId.has(book.authorId)) booksByAuthorId.set(book.authorId, []);
+    booksByAuthorId.get(book.authorId).push(book);
+  });
+
+  db.holdings.forEach(holding => {
+    if (!holdingsByBookId.has(holding.bookId)) holdingsByBookId.set(holding.bookId, []);
+    holdingsByBookId.get(holding.bookId).push(holding);
+  });
+
+  return {
+    authorsById,
+    booksById,
+    holdingsById,
+    usersById,
+    booksByAuthorId,
+    holdingsByBookId,
+    loanedHoldingIds
+  };
+}
+
+function currentRenderContext(ctx) {
+  return ctx || renderContext || createRenderContext();
+}
+
 function findAuthor(id) {
-  return db.authors.find(author => author.id === id);
+  return renderContext?.authorsById.get(id) || db.authors.find(author => author.id === id);
 }
 
 function findBook(id) {
-  return db.books.find(book => book.id === id);
+  return renderContext?.booksById.get(id) || db.books.find(book => book.id === id);
 }
 
 function findHolding(id) {
-  return db.holdings.find(holding => holding.id === id);
+  return renderContext?.holdingsById.get(id) || db.holdings.find(holding => holding.id === id);
 }
 
 function findUser(id) {
-  return db.users.find(user => user.id === id);
+  return renderContext?.usersById.get(id) || db.users.find(user => user.id === id);
 }
 
 function formatLifeSpan(author) {
@@ -355,23 +399,18 @@ document.getElementById('authorForm').addEventListener('submit', e => {
 
 function renderAuthors() {
   const tbody = document.querySelector('#authorTable tbody');
-  tbody.innerHTML = '';
   if (db.authors.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty">まだ著者が登録されていません</td></tr>';
   } else {
-    db.authors.forEach(author => {
-      const tr = document.createElement('tr');
-      tr.dataset.id = author.id;
-      tr.innerHTML = `
+    tbody.innerHTML = db.authors.map(author => `<tr data-id="${author.id}">
         <td><span class="fk-link">${formatId('authors', author.id)}</span></td>
         <td>${escapeHtml(author.name)}</td>
         <td>${escapeHtml(author.kana)}</td>
         <td>${escapeHtml(author.roman)}</td>
         <td>${escapeHtml(author.aliases)}</td>
         <td>${formatLifeSpan(author)}</td>
-        <td><button class="btn-delete" data-del="author" data-id="${author.id}">削除</button></td>`;
-      tbody.appendChild(tr);
-    });
+        <td><button class="btn-delete" data-del="author" data-id="${author.id}">削除</button></td>
+      </tr>`).join('');
   }
   document.getElementById('authorCount').textContent = `${db.authors.length}件`;
 
@@ -404,26 +443,24 @@ document.getElementById('bookForm').addEventListener('submit', e => {
   flashRow('bookTable', book.id);
 });
 
-function renderBooks() {
+function renderBooks(ctx) {
+  const context = currentRenderContext(ctx);
   const tbody = document.querySelector('#bookTable tbody');
-  tbody.innerHTML = '';
   if (db.books.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty">まだ書籍が登録されていません</td></tr>';
   } else {
-    db.books.forEach(book => {
-      const author = findAuthor(book.authorId);
-      const tr = document.createElement('tr');
-      tr.dataset.id = book.id;
-      tr.innerHTML = `
+    tbody.innerHTML = db.books.map(book => {
+      const author = context.authorsById.get(book.authorId);
+      return `<tr data-id="${book.id}">
         <td><span class="fk-link">${formatId('books', book.id)}</span></td>
         <td>${escapeHtml(book.title)}</td>
         <td>${author ? escapeHtml(author.name) : '<em>(著者不明)</em>'}</td>
         <td><span class="fk-link">→ ${formatId('authors', book.authorId)}</span></td>
         <td>${escapeHtml(book.publisher ?? '')}</td>
         <td>${book.year ?? ''}</td>
-        <td><button class="btn-delete" data-del="book" data-id="${book.id}">削除</button></td>`;
-      tbody.appendChild(tr);
-    });
+        <td><button class="btn-delete" data-del="book" data-id="${book.id}">削除</button></td>
+      </tr>`;
+    }).join('');
   }
   document.getElementById('bookCount').textContent = `${db.books.length}件`;
 
@@ -461,35 +498,32 @@ document.getElementById('holdingForm').addEventListener('submit', e => {
   flashRow('holdingTable', holding.id);
 });
 
-function renderHoldings() {
+function renderHoldings(ctx) {
+  const context = currentRenderContext(ctx);
   const tbody = document.querySelector('#holdingTable tbody');
-  tbody.innerHTML = '';
   if (db.holdings.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="empty">まだ所蔵が登録されていません</td></tr>';
   } else {
-    db.holdings.forEach(holding => {
-      const book = findBook(holding.bookId);
-      const author = book ? findAuthor(book.authorId) : null;
-      const tr = document.createElement('tr');
-      tr.dataset.id = holding.id;
-      tr.innerHTML = `
+    tbody.innerHTML = db.holdings.map(holding => {
+      const book = context.booksById.get(holding.bookId);
+      const author = book ? context.authorsById.get(book.authorId) : null;
+      return `<tr data-id="${holding.id}">
         <td><span class="fk-link">${formatId('holdings', holding.id)}</span></td>
         <td><span class="fk-link">→ ${formatId('books', holding.bookId)}</span></td>
         <td>${book ? escapeHtml(book.title) : '<em>(書籍不明)</em>'}</td>
         <td>${author ? escapeHtml(author.name) : ''}</td>
         <td>${escapeHtml(holding.location)}</td>
-        <td><button class="btn-delete" data-del="holding" data-id="${holding.id}">削除</button></td>`;
-      tbody.appendChild(tr);
-    });
+        <td><button class="btn-delete" data-del="holding" data-id="${holding.id}">削除</button></td>
+      </tr>`;
+    }).join('');
   }
   document.getElementById('holdingCount').textContent = `${db.holdings.length}件`;
 
-  const loanedIds = new Set(db.loans.map(loan => loan.holdingId));
-  const available = db.holdings.filter(holding => !loanedIds.has(holding.id));
+  const available = db.holdings.filter(holding => !context.loanedHoldingIds.has(holding.id));
   const sel = document.querySelector('#loanForm select[name="holdingId"]');
   sel.innerHTML = '<option value="">— 図書を選択 —</option>' +
     available.map(holding => {
-      const book = findBook(holding.bookId);
+      const book = context.booksById.get(holding.bookId);
       return `<option value="${holding.id}">${formatId('holdings', holding.id)} / ${book ? escapeHtml(book.title) : '書籍不明'} / ${escapeHtml(holding.location)}</option>`;
     }).join('');
   document.getElementById('noHoldingHint').style.display = db.holdings.length === 0 ? 'block' : 'none';
@@ -521,21 +555,16 @@ document.getElementById('userForm').addEventListener('submit', e => {
 
 function renderUsers() {
   const tbody = document.querySelector('#userTable tbody');
-  tbody.innerHTML = '';
   if (db.users.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" class="empty">まだ利用者が登録されていません</td></tr>';
   } else {
-    db.users.forEach(user => {
-      const tr = document.createElement('tr');
-      tr.dataset.id = user.id;
-      tr.innerHTML = `
+    tbody.innerHTML = db.users.map(user => `<tr data-id="${user.id}">
         <td><span class="fk-link">${formatId('users', user.id)}</span></td>
         <td>${escapeHtml(user.studentNumber)}</td>
         <td>${escapeHtml(user.faculty)}</td>
         <td>${escapeHtml(user.name)}</td>
-        <td><button class="btn-delete" data-del="user" data-id="${user.id}">削除</button></td>`;
-      tbody.appendChild(tr);
-    });
+        <td><button class="btn-delete" data-del="user" data-id="${user.id}">削除</button></td>
+      </tr>`).join('');
   }
   document.getElementById('userCount').textContent = `${db.users.length}件`;
 
@@ -577,19 +606,17 @@ document.getElementById('loanForm').addEventListener('submit', e => {
   flashRow('loanTable', loan.id);
 });
 
-function renderLoans() {
+function renderLoans(ctx) {
+  const context = currentRenderContext(ctx);
   const tbody = document.querySelector('#loanTable tbody');
-  tbody.innerHTML = '';
   if (db.loans.length === 0) {
     tbody.innerHTML = '<tr><td colspan="10" class="empty">まだ貸出が記録されていません</td></tr>';
   } else {
-    db.loans.forEach(loan => {
-      const holding = findHolding(loan.holdingId);
-      const book = holding ? findBook(holding.bookId) : null;
-      const user = findUser(loan.userId);
-      const tr = document.createElement('tr');
-      tr.dataset.id = loan.id;
-      tr.innerHTML = `
+    tbody.innerHTML = db.loans.map(loan => {
+      const holding = context.holdingsById.get(loan.holdingId);
+      const book = holding ? context.booksById.get(holding.bookId) : null;
+      const user = context.usersById.get(loan.userId);
+      return `<tr data-id="${loan.id}">
         <td><span class="fk-link">${formatId('loans', loan.id)}</span></td>
         <td><span class="fk-link">→ ${formatId('holdings', loan.holdingId)}</span></td>
         <td><span class="fk-link">→ ${holding ? formatId('books', holding.bookId) : ''}</span></td>
@@ -599,9 +626,9 @@ function renderLoans() {
         <td>${user ? escapeHtml(user.studentNumber) : ''}</td>
         <td>${user ? escapeHtml(user.name) : '<em>(利用者不明)</em>'}</td>
         <td>${loan.date}</td>
-        <td><button class="btn-delete" data-del="loan" data-id="${loan.id}">削除</button></td>`;
-      tbody.appendChild(tr);
-    });
+        <td><button class="btn-delete" data-del="loan" data-id="${loan.id}">削除</button></td>
+      </tr>`;
+    }).join('');
   }
   document.getElementById('loanCount').textContent = `${db.loans.length}件`;
 }
@@ -662,11 +689,11 @@ function currentAuthorQuery() {
   return document.getElementById('authorSearchInput')?.value || '';
 }
 
-function renderBookSearchResults() {
+function renderBookSearchResults(ctx) {
+  const context = currentRenderContext(ctx);
   const tbody = document.querySelector('#bookSearchResult tbody');
   if (!tbody) return;
   const q = currentBookQuery().trim().toLowerCase();
-  tbody.innerHTML = '';
 
   if (!bookSearchSubmitted) {
     tbody.innerHTML = '<tr><td colspan="6" class="empty">キーワードを入力して検索してください</td></tr>';
@@ -677,16 +704,16 @@ function renderBookSearchResults() {
     return;
   }
 
-  const books = db.books.filter(book => bookMatchesSearch(book, q));
+  const books = db.books.filter(book => bookMatchesSearch(book, q, context));
   if (books.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="empty">該当なし</td></tr>';
     return;
   }
 
-  books.forEach(book => {
-    const author = findAuthor(book.authorId);
-    const holdingCount = db.holdings.filter(holding => holding.bookId === book.id).length;
-    tbody.innerHTML += `<tr>
+  tbody.innerHTML = books.map(book => {
+    const author = context.authorsById.get(book.authorId);
+    const holdingCount = (context.holdingsByBookId.get(book.id) || []).length;
+    return `<tr>
       <td><span class="fk-link">${formatId('books', book.id)}</span></td>
       <td>${escapeHtml(book.title)}</td>
       <td>${author ? escapeHtml(author.name) : '<em>(著者不明)</em>'}</td>
@@ -694,11 +721,12 @@ function renderBookSearchResults() {
       <td>${book.year ?? ''}</td>
       <td>${holdingCount} 冊</td>
     </tr>`;
-  });
+  }).join('');
 }
 
-function bookMatchesSearch(book, q) {
-  const author = findAuthor(book.authorId);
+function bookMatchesSearch(book, q, ctx) {
+  const context = currentRenderContext(ctx);
+  const author = context.authorsById.get(book.authorId);
   return [
     book.title,
     book.publisher,
@@ -710,21 +738,21 @@ function bookMatchesSearch(book, q) {
   ].some(value => String(value || '').toLowerCase().includes(q));
 }
 
-function renderAuthorSearchResults() {
+function renderAuthorSearchResults(ctx) {
+  const context = currentRenderContext(ctx);
   const tbody = document.querySelector('#authorSearchResult tbody');
   if (!tbody) return;
   const q = currentAuthorQuery().trim().toLowerCase();
-  tbody.innerHTML = '';
 
   if (!authorSearchSubmitted) {
     tbody.innerHTML = '<tr><td colspan="6" class="empty">著者キーワードを入力して検索してください</td></tr>';
-    renderSelectedAuthorBooks();
+    renderSelectedAuthorBooks(context);
     return;
   }
   if (!q) {
     tbody.innerHTML = '<tr><td colspan="6" class="empty">著者キーワードを入力してください</td></tr>';
     selectedAuthorId = null;
-    renderSelectedAuthorBooks();
+    renderSelectedAuthorBooks(context);
     return;
   }
 
@@ -732,13 +760,13 @@ function renderAuthorSearchResults() {
   if (authors.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="empty">該当なし</td></tr>';
     selectedAuthorId = null;
-    renderSelectedAuthorBooks();
+    renderSelectedAuthorBooks(context);
     return;
   }
 
-  authors.forEach(author => {
+  tbody.innerHTML = authors.map(author => {
     const selectedClass = author.id === selectedAuthorId ? ' selected' : '';
-    tbody.innerHTML += `<tr class="clickable-row${selectedClass}" data-author-id="${author.id}">
+    return `<tr class="clickable-row${selectedClass}" data-author-id="${author.id}">
       <td><span class="fk-link">${formatId('authors', author.id)}</span></td>
       <td>${escapeHtml(author.name)}</td>
       <td>${escapeHtml(author.kana)}</td>
@@ -746,12 +774,13 @@ function renderAuthorSearchResults() {
       <td>${escapeHtml(author.aliases || '')}</td>
       <td>${formatLifeSpan(author)}</td>
     </tr>`;
-  });
+  }).join('');
 
-  renderSelectedAuthorBooks();
+  renderSelectedAuthorBooks(context);
 }
 
-function renderSelectedAuthorBooks() {
+function renderSelectedAuthorBooks(ctx) {
+  const context = currentRenderContext(ctx);
   const panel = document.getElementById('selectedAuthorBooksPanel');
   const title = document.getElementById('selectedAuthorTitle');
   const tbody = document.querySelector('#selectedAuthorBooks tbody');
@@ -763,7 +792,7 @@ function renderSelectedAuthorBooks() {
     return;
   }
 
-  const author = findAuthor(selectedAuthorId);
+  const author = context.authorsById.get(selectedAuthorId);
   if (!author) {
     panel.hidden = true;
     tbody.innerHTML = '';
@@ -772,24 +801,23 @@ function renderSelectedAuthorBooks() {
 
   panel.hidden = false;
   title.textContent = `${author.name}の書籍`;
-  const books = db.books.filter(book => book.authorId === author.id);
-  tbody.innerHTML = '';
+  const books = context.booksByAuthorId.get(author.id) || [];
 
   if (books.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" class="empty">該当する書籍がありません</td></tr>';
     return;
   }
 
-  books.forEach(book => {
-    const holdingCount = db.holdings.filter(holding => holding.bookId === book.id).length;
-    tbody.innerHTML += `<tr>
+  tbody.innerHTML = books.map(book => {
+    const holdingCount = (context.holdingsByBookId.get(book.id) || []).length;
+    return `<tr>
       <td><span class="fk-link">${formatId('books', book.id)}</span></td>
       <td>${escapeHtml(book.title)}</td>
       <td>${escapeHtml(book.publisher ?? '')}</td>
       <td>${book.year ?? ''}</td>
       <td>${holdingCount} 冊</td>
     </tr>`;
-  });
+  }).join('');
 }
 
 document.getElementById('bookSearchForm').addEventListener('submit', e => {
@@ -818,7 +846,8 @@ function authorMatches(author, q) {
 }
 
 // === 統計 ===
-function renderStats() {
+function renderStats(ctx) {
+  const context = currentRenderContext(ctx);
   const counts = document.getElementById('counts');
   counts.innerHTML = `
     <li>著者 <span class="num">${db.authors.length}</span></li>
@@ -829,15 +858,14 @@ function renderStats() {
   `;
 
   const ba = document.querySelector('#byAuthor tbody');
-  ba.innerHTML = '';
   if (db.authors.length === 0) {
     ba.innerHTML = '<tr><td colspan="3" class="empty">データなし</td></tr>';
   } else {
-    db.authors.forEach(author => {
-      const bookIds = db.books.filter(book => book.authorId === author.id).map(book => book.id);
-      const n = db.holdings.filter(holding => bookIds.includes(holding.bookId)).length;
-      ba.innerHTML += `<tr><td>${formatId('authors', author.id)}</td><td>${escapeHtml(author.name)}</td><td>${n} 冊</td></tr>`;
-    });
+    ba.innerHTML = db.authors.map(author => {
+      const books = context.booksByAuthorId.get(author.id) || [];
+      const n = books.reduce((total, book) => total + (context.holdingsByBookId.get(book.id) || []).length, 0);
+      return `<tr><td>${formatId('authors', author.id)}</td><td>${escapeHtml(author.name)}</td><td>${n} 冊</td></tr>`;
+    }).join('');
   }
 }
 
@@ -868,14 +896,19 @@ function flashRow(tableId, id) {
 }
 
 function renderAll() {
-  renderAuthors();
-  renderBooks();
-  renderHoldings();
-  renderUsers();
-  renderLoans();
-  renderBookSearchResults();
-  renderAuthorSearchResults();
-  renderStats();
+  renderContext = createRenderContext();
+  try {
+    renderAuthors();
+    renderBooks(renderContext);
+    renderHoldings(renderContext);
+    renderUsers();
+    renderLoans(renderContext);
+    renderBookSearchResults(renderContext);
+    renderAuthorSearchResults(renderContext);
+    renderStats(renderContext);
+  } finally {
+    renderContext = null;
+  }
 }
 
 // === 起動 ===
