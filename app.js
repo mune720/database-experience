@@ -1,208 +1,753 @@
-let db;
-let showSql = false;
+// === データベース体験アプリ ===
+// localStorageを使った簡易リレーショナルDBシミュレータ
 
-const DB_KEY = "library_db_sqljs_v2";
-const wasmConfig = { locateFile: () => "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.wasm" };
+const STORAGE_KEY = 'db-experience-v4';
 
-function setLastSql(sql) {
-  document.getElementById("lastSql").textContent = sql;
-}
-
-function persistDb() {
-  const bin = db.export();
-  localStorage.setItem(DB_KEY, JSON.stringify(Array.from(bin)));
-}
-
-function run(sql, params = []) {
-  setLastSql(sql);
-  db.run(sql, params);
-  persistDb();
-}
-
-function query(sql, params = []) {
-  setLastSql(sql);
-  const stmt = db.prepare(sql);
-  stmt.bind(params);
-  const rows = [];
-  while (stmt.step()) rows.push(stmt.getAsObject());
-  stmt.free();
-  persistDb();
-  return rows;
-}
-
-function initSchema() {
-  db.run("PRAGMA foreign_keys = ON;");
-  run(`CREATE TABLE IF NOT EXISTS books (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    published_year INTEGER
-  );`);
-  run(`CREATE TABLE IF NOT EXISTS copies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL,
-    barcode TEXT NOT NULL UNIQUE,
-    FOREIGN KEY(book_id) REFERENCES books(id)
-  );`);
-  run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    category TEXT NOT NULL
-  );`);
-  run(`CREATE TABLE IF NOT EXISTS loans (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    copy_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    loan_date TEXT NOT NULL DEFAULT (date('now')),
-    FOREIGN KEY(copy_id) REFERENCES copies(id),
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  );`);
-}
-
-function tableHtml(rows) {
-  if (!rows.length) return "<p class='muted'>該当データがありません。</p>";
-  const headers = Object.keys(rows[0]);
-  return `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${headers.map(h => `<td>${r[h] ?? ""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-}
-
-function validateInt(value, name) {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n <= 0) throw new Error(`${name}は1以上の整数で入力してください。`);
-  return n;
-}
-
-function addStatus(message, tone = "ok") {
-  const el = document.getElementById("status");
-  el.textContent = message;
-  el.style.color = tone === "error" ? "#dc2626" : "#0f766e";
-}
-
-window.addBook = () => {
-  try {
-    const title = document.getElementById("bookTitle").value.trim();
-    const year = document.getElementById("bookYear").value;
-    if (!title) throw new Error("タイトルを入力してください");
-    run("INSERT INTO books (title, published_year) VALUES (?, ?);", [title, year ? Number(year) : null]);
-    addStatus("booksにレコードを追加しました。");
-  } catch (e) { addStatus(e.message, "error"); }
+const ID_PREFIX = {
+  authors: 'AID',
+  books: 'BID',
+  holdings: 'HID',
+  users: 'UID',
+  loans: 'LID'
 };
 
-window.addCopy = () => {
-  try {
-    const bookId = validateInt(document.getElementById("copyBookId").value, "book_id");
-    const barcode = document.getElementById("copyBarcode").value.trim();
-    if (!barcode) throw new Error("バーコードを入力してください");
-    run("INSERT INTO copies (book_id, barcode) VALUES (?, ?);", [bookId, barcode]);
-    addStatus("copiesにレコードを追加しました。");
-  } catch (e) { addStatus(e.message, "error"); }
+const LOCATIONS = ['本館1階', '本館2階', '分館', '新着図書'];
+
+const DEFAULT_AUTHORS = [
+  { id: 1, name: '夏目漱石', kana: 'ナツメ ソウセキ', roman: 'Natsume Soseki', aliases: '夏目金之助', birth: 1867, death: 1916 },
+  { id: 2, name: '森鷗外', kana: 'モリ オウガイ', roman: 'Mori Ogai', aliases: '森林太郎、森鴎外', birth: 1862, death: 1922 },
+  { id: 3, name: '樋口一葉', kana: 'ヒグチ イチヨウ', roman: 'Higuchi Ichiyo', aliases: '樋口奈津', birth: 1872, death: 1896 },
+  { id: 4, name: '宮沢賢治', kana: 'ミヤザワ ケンジ', roman: 'Miyazawa Kenji', aliases: '', birth: 1896, death: 1933 },
+  { id: 5, name: '村上春樹', kana: 'ムラカミ ハルキ', roman: 'Murakami Haruki', aliases: '', birth: 1949, death: null },
+  { id: 6, name: '村上龍', kana: 'ムラカミ リュウ', roman: 'Murakami Ryu', aliases: '村上龍之助', birth: 1952, death: null },
+  { id: 7, name: '柳田國男', kana: 'ヤナギタ クニオ', roman: 'Yanagita Kunio', aliases: '柳田国男', birth: 1875, death: 1962 },
+  { id: 8, name: '中根千枝', kana: 'ナカネ チエ', roman: 'Nakane Chie', aliases: '', birth: 1926, death: 2021 },
+  { id: 9, name: 'チャールズ・ダーウィン', kana: 'チャールズ ダーウィン', roman: 'Charles Darwin', aliases: 'Charles Robert Darwin', birth: 1809, death: 1882 },
+  { id: 10, name: 'マックス・ヴェーバー', kana: 'マックス ヴェーバー', roman: 'Max Weber', aliases: 'Maximilian Carl Emil Weber', birth: 1864, death: 1920 }
+];
+
+const DEFAULT_BOOKS = [
+  { id: 1, title: '吾輩は猫である', authorId: 1, publisher: '大倉書店', year: 1905 },
+  { id: 2, title: '舞姫', authorId: 2, publisher: '民友社', year: 1890 },
+  { id: 3, title: 'たけくらべ', authorId: 3, publisher: '博文館', year: 1895 },
+  { id: 4, title: '銀河鉄道の夜', authorId: 4, publisher: '文圃堂', year: 1934 },
+  { id: 5, title: 'ノルウェイの森', authorId: 5, publisher: '講談社', year: 1987 },
+  { id: 6, title: '限りなく透明に近いブルー', authorId: 6, publisher: '講談社', year: 1976 },
+  { id: 7, title: '遠野物語', authorId: 7, publisher: '聚精堂', year: 1910 },
+  { id: 8, title: 'タテ社会の人間関係', authorId: 8, publisher: '講談社', year: 1967 },
+  { id: 9, title: '種の起源', authorId: 9, publisher: 'John Murray', year: 1859 },
+  { id: 10, title: 'プロテスタンティズムの倫理と資本主義の精神', authorId: 10, publisher: 'Archiv fuer Sozialwissenschaft und Sozialpolitik', year: 1905 },
+  { id: 11, title: 'こころ', authorId: 1, publisher: '岩波書店', year: 1914 },
+  { id: 12, title: '山椒大夫', authorId: 2, publisher: '中央公論社', year: 1915 },
+  { id: 13, title: '注文の多い料理店', authorId: 4, publisher: '杜陵出版部・東京光原社', year: 1924 },
+  { id: 14, title: '海辺のカフカ', authorId: 5, publisher: '新潮社', year: 2002 },
+  { id: 15, title: 'コインロッカー・ベイビーズ', authorId: 6, publisher: '講談社', year: 1980 }
+];
+
+const DEFAULT_HOLDINGS = [
+  { id: 1, bookId: 1, location: '本館1階' },
+  { id: 2, bookId: 2, location: '本館2階' },
+  { id: 3, bookId: 3, location: '本館1階' },
+  { id: 4, bookId: 4, location: '分館' },
+  { id: 5, bookId: 5, location: '本館2階' },
+  { id: 6, bookId: 6, location: '分館' },
+  { id: 7, bookId: 7, location: '本館1階' },
+  { id: 8, bookId: 8, location: '本館2階' },
+  { id: 9, bookId: 9, location: '分館' },
+  { id: 10, bookId: 10, location: '本館2階' },
+  { id: 11, bookId: 11, location: '新着図書' },
+  { id: 12, bookId: 12, location: '本館1階' },
+  { id: 13, bookId: 13, location: '新着図書' },
+  { id: 14, bookId: 14, location: '本館2階' },
+  { id: 15, bookId: 15, location: '分館' },
+  { id: 16, bookId: 1, location: '分館' },
+  { id: 17, bookId: 4, location: '新着図書' },
+  { id: 18, bookId: 5, location: '本館1階' },
+  { id: 19, bookId: 9, location: '本館1階' },
+  { id: 20, bookId: 14, location: '新着図書' }
+];
+
+const DEFAULT_USERS = [
+  { id: 1, studentNumber: 'AG20L001', faculty: '文学部', name: '佐藤花子' },
+  { id: 2, studentNumber: 'AG21I002', faculty: '情報学部', name: '鈴木一郎' },
+  { id: 3, studentNumber: 'AG22E003', faculty: '教育学部', name: '田中美咲' },
+  { id: 4, studentNumber: 'AG23A004', faculty: '芸術学部', name: '山本健太' },
+  { id: 5, studentNumber: 'AG24S005', faculty: '理学部', name: '高橋直子' }
+];
+
+const db = {
+  authors: [],
+  books: [],
+  holdings: [],
+  users: [],
+  loans: [],
+  nextId: { authors: 1, books: 1, holdings: 1, users: 1, loans: 1 }
 };
 
-window.addUser = () => {
-  try {
-    const name = document.getElementById("userName").value.trim();
-    const category = document.getElementById("userCategory").value;
-    if (!name) throw new Error("氏名を入力してください");
-    run("INSERT INTO users (name, category) VALUES (?, ?);", [name, category]);
-    addStatus("usersにレコードを追加しました。");
-  } catch (e) { addStatus(e.message, "error"); }
-};
-
-window.addLoan = () => {
-  try {
-    const copyId = validateInt(document.getElementById("loanCopyId").value, "copy_id");
-    const userId = validateInt(document.getElementById("loanUserId").value, "user_id");
-    run("INSERT INTO loans (copy_id, user_id) VALUES (?, ?);", [copyId, userId]);
-    addStatus("loansにレコードを追加しました。");
-  } catch (e) { addStatus(e.message, "error"); }
-};
-
-window.searchLoans = () => {
-  const rows = query(`SELECT l.id AS loan_id, u.name AS 利用者, u.category AS 区分, b.title AS タイトル, c.barcode AS バーコード, l.loan_date AS 貸出日
-FROM loans l
-JOIN users u ON l.user_id = u.id
-JOIN copies c ON l.copy_id = c.id
-JOIN books b ON c.book_id = b.id
-ORDER BY l.id DESC;`);
-  document.getElementById("joinResult").innerHTML = tableHtml(rows);
-};
-
-window.searchBooks = () => {
-  const q = document.getElementById("titleSearch").value.trim();
-  const rows = query("SELECT * FROM books WHERE title LIKE ? ORDER BY id DESC;", [`%${q}%`]);
-  document.getElementById("bookResult").innerHTML = tableHtml(rows);
-};
-
-window.statsByCategory = () => {
-  const rows = query(`SELECT u.category AS 利用者区分, COUNT(*) AS 貸出件数
-FROM loans l JOIN users u ON l.user_id = u.id
-GROUP BY u.category
-ORDER BY 貸出件数 DESC;`);
-  document.getElementById("statsResult").innerHTML = tableHtml(rows);
-};
-
-window.showTable = (tableName) => {
-  const rows = query(`SELECT * FROM ${tableName} ORDER BY id DESC;`);
-  document.getElementById("tableResult").innerHTML = tableHtml(rows);
-};
-
-window.runSql = () => {
-  try {
-    const sql = document.getElementById("sqlInput").value.trim();
-    const rows = query(sql);
-    document.getElementById("sqlResult").innerHTML = tableHtml(rows);
-  } catch (e) {
-    document.getElementById("sqlResult").innerHTML = `<p style='color:#dc2626'>${e.message}</p>`;
-  }
-};
-
-function insertBook(title, year) {
-  run("INSERT INTO books (title, published_year) VALUES (?, ?);", [title, year]);
-  return query("SELECT last_insert_rowid() AS id;")[0].id;
-}
-
-function insertCopy(bookId, barcode) {
-  run("INSERT INTO copies (book_id, barcode) VALUES (?, ?);", [bookId, barcode]);
-  return query("SELECT last_insert_rowid() AS id;")[0].id;
-}
-
-function insertUser(name, category) {
-  run("INSERT INTO users (name, category) VALUES (?, ?);", [name, category]);
-  return query("SELECT last_insert_rowid() AS id;")[0].id;
-}
-
-async function boot() {
-  const SQL = await initSqlJs(wasmConfig);
-  const saved = localStorage.getItem(DB_KEY);
-  db = saved ? new SQL.Database(new Uint8Array(JSON.parse(saved))) : new SQL.Database();
-  initSchema();
-
-  document.getElementById("seedBtn").onclick = () => {
-    try {
-      const book1 = insertBook("図書館概論", 2023);
-      const book2 = insertBook("データベース入門", 2024);
-      const copy1 = insertCopy(book1, `BC${Date.now()}01`);
-      insertCopy(book1, `BC${Date.now()}02`);
-      const copy3 = insertCopy(book2, `BC${Date.now()}03`);
-      const user1 = insertUser("山田花子", "学部2年");
-      const user2 = insertUser("鈴木一郎", "大学院");
-      run("INSERT INTO loans (copy_id, user_id) VALUES (?, ?);", [copy1, user1]);
-      run("INSERT INTO loans (copy_id, user_id) VALUES (?, ?);", [copy3, user2]);
-      addStatus("サンプルデータを投入しました。JOIN表示で確認できます。");
-    } catch (e) {
-      addStatus(e.message, "error");
+function createDefaultDb() {
+  return {
+    authors: cloneRecords(DEFAULT_AUTHORS),
+    books: cloneRecords(DEFAULT_BOOKS),
+    holdings: cloneRecords(DEFAULT_HOLDINGS),
+    users: cloneRecords(DEFAULT_USERS),
+    loans: [],
+    nextId: {
+      authors: DEFAULT_AUTHORS.length + 1,
+      books: DEFAULT_BOOKS.length + 1,
+      holdings: DEFAULT_HOLDINGS.length + 1,
+      users: DEFAULT_USERS.length + 1,
+      loans: 1
     }
   };
-
-  document.getElementById("resetBtn").onclick = () => {
-    if (!confirm("このブラウザのDBを削除して初期化します。よろしいですか？")) return;
-    localStorage.removeItem(DB_KEY);
-    location.reload();
-  };
-
-  document.getElementById("showSqlBtn").onclick = () => {
-    showSql = !showSql;
-    document.getElementById("sqlPanel").style.display = showSql ? "block" : "none";
-    document.getElementById("showSqlBtn").textContent = `SQL学習モード: ${showSql ? "ON" : "OFF"}`;
-  };
 }
 
-boot();
+function cloneRecords(records) {
+  return records.map(record => ({ ...record }));
+}
+
+function replaceDb(data) {
+  db.authors = Array.isArray(data.authors) ? data.authors : [];
+  db.books = Array.isArray(data.books) ? data.books : [];
+  db.holdings = Array.isArray(data.holdings) ? data.holdings : holdingsFromBooks(db.books);
+  db.users = Array.isArray(data.users) ? data.users : [];
+  db.loans = Array.isArray(data.loans) ? data.loans : [];
+  db.nextId = {
+    authors: data.nextId?.authors || 1,
+    books: data.nextId?.books || 1,
+    holdings: data.nextId?.holdings || 1,
+    users: data.nextId?.users || 1,
+    loans: data.nextId?.loans || 1
+  };
+  normalizeDb();
+}
+
+function holdingsFromBooks(books) {
+  return books.map((book, index) => ({
+    id: index + 1,
+    bookId: normalizeId(book.id),
+    location: LOCATIONS[index % LOCATIONS.length]
+  }));
+}
+
+function load() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    resetToDefaults();
+    save();
+    return;
+  }
+
+  try {
+    replaceDb(JSON.parse(raw));
+  } catch (e) {
+    console.warn('読み込み失敗', e);
+    resetToDefaults();
+    save();
+  }
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+
+function resetToDefaults() {
+  replaceDb(createDefaultDb());
+}
+
+function normalizeDb() {
+  db.authors = db.authors.map(author => ({
+    id: normalizeId(author.id),
+    name: author.name || '',
+    kana: author.kana || '',
+    roman: author.roman || '',
+    aliases: author.aliases || '',
+    birth: parseOptionalYear(author.birth),
+    death: parseOptionalYear(author.death)
+  }));
+
+  db.books = db.books.map(book => ({
+    id: normalizeId(book.id),
+    title: book.title || '',
+    authorId: normalizeId(book.authorId),
+    publisher: book.publisher || null,
+    year: parseOptionalYear(book.year)
+  }));
+
+  db.holdings = db.holdings.map(holding => ({
+    id: normalizeId(holding.id),
+    bookId: normalizeId(holding.bookId),
+    location: LOCATIONS.includes(holding.location) ? holding.location : LOCATIONS[0]
+  }));
+
+  db.users = db.users.map(user => {
+    const id = normalizeId(user.id);
+    const faculty = user.faculty || '文学部';
+    return {
+      id,
+      studentNumber: user.studentNumber || generateStudentNumber(id, faculty),
+      faculty,
+      name: user.name || ''
+    };
+  });
+
+  db.loans = db.loans.map(loan => {
+    const holdingId = loan.holdingId ? normalizeId(loan.holdingId) : ensureHoldingFromLegacyLoan(loan.bookId);
+    const userId = loan.userId ? normalizeId(loan.userId) : ensureUserFromLegacyLoan(loan.user);
+    return {
+      id: normalizeId(loan.id),
+      holdingId,
+      userId,
+      date: loan.date || ''
+    };
+  });
+
+  ensureNextIds();
+}
+
+function ensureHoldingFromLegacyLoan(bookId) {
+  const normalizedBookId = normalizeId(bookId);
+  if (!normalizedBookId) return null;
+  const existing = db.holdings.find(holding => holding.bookId === normalizedBookId);
+  if (existing) return existing.id;
+  const id = nextAvailableId(db.holdings);
+  db.holdings.push({ id, bookId: normalizedBookId, location: LOCATIONS[0] });
+  return id;
+}
+
+function ensureUserFromLegacyLoan(userName) {
+  const name = typeof userName === 'string' ? userName.trim() : '';
+  if (!name) return null;
+  const existing = db.users.find(user => user.name === name);
+  if (existing) return existing.id;
+  const id = nextAvailableId(db.users);
+  const faculty = '文学部';
+  db.users.push({
+    id,
+    studentNumber: generateStudentNumber(id, faculty),
+    faculty,
+    name
+  });
+  return id;
+}
+
+function generateStudentNumber(id, faculty) {
+  return `AG20${facultyInitial(faculty)}${String(id || 1).padStart(3, '0')}`;
+}
+
+function facultyInitial(faculty) {
+  const initials = {
+    '文学部': 'L',
+    '情報学部': 'I',
+    '教育学部': 'E',
+    '芸術学部': 'A',
+    '理学部': 'S'
+  };
+  return initials[faculty] || 'X';
+}
+
+function ensureNextIds() {
+  db.nextId.authors = Math.max(db.nextId.authors || 1, nextAvailableId(db.authors));
+  db.nextId.books = Math.max(db.nextId.books || 1, nextAvailableId(db.books));
+  db.nextId.holdings = Math.max(db.nextId.holdings || 1, nextAvailableId(db.holdings));
+  db.nextId.users = Math.max(db.nextId.users || 1, nextAvailableId(db.users));
+  db.nextId.loans = Math.max(db.nextId.loans || 1, nextAvailableId(db.loans));
+}
+
+function nextAvailableId(records) {
+  return records.reduce((max, record) => Math.max(max, normalizeId(record.id) || 0), 0) + 1;
+}
+
+function normalizeId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function parseOptionalYear(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const year = Number(value);
+  return Number.isInteger(year) ? year : null;
+}
+
+function formatId(type, id) {
+  if (!id) return '';
+  return `${ID_PREFIX[type]}${String(id).padStart(4, '0')}`;
+}
+
+function findAuthor(id) {
+  return db.authors.find(author => author.id === id);
+}
+
+function findBook(id) {
+  return db.books.find(book => book.id === id);
+}
+
+function findHolding(id) {
+  return db.holdings.find(holding => holding.id === id);
+}
+
+function findUser(id) {
+  return db.users.find(user => user.id === id);
+}
+
+function formatLifeSpan(author) {
+  if (!author) return '';
+  const birth = author.birth ?? '?';
+  const death = author.death ?? '存命';
+  return `${birth}-${death}`;
+}
+
+// === タブ切り替え ===
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    renderAll();
+  });
+});
+
+// === タブ内リンク（「著者テーブルで新規作成」など） ===
+document.body.addEventListener('click', e => {
+  const link = e.target.closest('[data-goto]');
+  if (!link) return;
+  e.preventDefault();
+  const target = link.dataset.goto;
+  document.querySelector(`.tab[data-tab="${target}"]`)?.click();
+  setTimeout(() => {
+    document.querySelector(`#${target} input, #${target} select`)?.focus();
+  }, 50);
+});
+
+// === 著者 ===
+document.getElementById('authorForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const fields = f.elements;
+  const name = fields.name.value.trim();
+  if (!name) return;
+
+  const author = {
+    id: db.nextId.authors++,
+    name,
+    kana: fields.kana.value.trim(),
+    roman: fields.roman.value.trim(),
+    aliases: fields.aliases.value.trim(),
+    birth: parseOptionalYear(fields.birth.value),
+    death: parseOptionalYear(fields.death.value)
+  };
+  db.authors.push(author);
+  save();
+  f.reset();
+  renderAll();
+  flashRow('authorTable', author.id);
+});
+
+function renderAuthors() {
+  const tbody = document.querySelector('#authorTable tbody');
+  tbody.innerHTML = '';
+  if (db.authors.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">まだ著者が登録されていません</td></tr>';
+  } else {
+    db.authors.forEach(author => {
+      const tr = document.createElement('tr');
+      tr.dataset.id = author.id;
+      tr.innerHTML = `
+        <td><span class="fk-link">${formatId('authors', author.id)}</span></td>
+        <td>${escapeHtml(author.name)}</td>
+        <td>${escapeHtml(author.kana)}</td>
+        <td>${escapeHtml(author.roman)}</td>
+        <td>${escapeHtml(author.aliases)}</td>
+        <td>${formatLifeSpan(author)}</td>
+        <td><button class="btn-delete" data-del="author" data-id="${author.id}">削除</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('authorCount').textContent = `${db.authors.length}件`;
+
+  const sel = document.querySelector('#bookForm select[name="authorId"]');
+  sel.innerHTML = '<option value="">— 著者を選択 —</option>' +
+    db.authors.map(author => `<option value="${author.id}">${formatId('authors', author.id)} / ${escapeHtml(author.name)}</option>`).join('');
+  document.getElementById('noAuthorHint').style.display = db.authors.length === 0 ? 'block' : 'none';
+}
+
+// === 書籍 ===
+document.getElementById('bookForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const fields = f.elements;
+  const title = fields.title.value.trim();
+  const authorId = parseInt(fields.authorId.value, 10);
+  if (!title || !authorId) return;
+
+  const book = {
+    id: db.nextId.books++,
+    title,
+    authorId,
+    publisher: fields.publisher.value.trim() || null,
+    year: parseOptionalYear(fields.year.value)
+  };
+  db.books.push(book);
+  save();
+  f.reset();
+  renderAll();
+  flashRow('bookTable', book.id);
+});
+
+function renderBooks() {
+  const tbody = document.querySelector('#bookTable tbody');
+  tbody.innerHTML = '';
+  if (db.books.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">まだ書籍が登録されていません</td></tr>';
+  } else {
+    db.books.forEach(book => {
+      const author = findAuthor(book.authorId);
+      const tr = document.createElement('tr');
+      tr.dataset.id = book.id;
+      tr.innerHTML = `
+        <td><span class="fk-link">${formatId('books', book.id)}</span></td>
+        <td>${escapeHtml(book.title)}</td>
+        <td>${author ? escapeHtml(author.name) : '<em>(著者不明)</em>'}</td>
+        <td><span class="fk-link">→ ${formatId('authors', book.authorId)}</span></td>
+        <td>${escapeHtml(book.publisher ?? '')}</td>
+        <td>${book.year ?? ''}</td>
+        <td><button class="btn-delete" data-del="book" data-id="${book.id}">削除</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('bookCount').textContent = `${db.books.length}件`;
+
+  renderBookOptions();
+}
+
+function renderBookOptions() {
+  const bookSelects = document.querySelectorAll('select[name="bookId"]');
+  bookSelects.forEach(sel => {
+    sel.innerHTML = '<option value="">— 書籍を選択 —</option>' +
+      db.books.map(book => `<option value="${book.id}">${formatId('books', book.id)} / ${escapeHtml(book.title)}</option>`).join('');
+  });
+  const noHoldingBookHint = document.getElementById('noHoldingBookHint');
+  if (noHoldingBookHint) noHoldingBookHint.style.display = db.books.length === 0 ? 'block' : 'none';
+}
+
+// === 所蔵 ===
+document.getElementById('holdingForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const fields = f.elements;
+  const bookId = parseInt(fields.bookId.value, 10);
+  const location = fields.location.value;
+  if (!bookId || !location) return;
+
+  const holding = {
+    id: db.nextId.holdings++,
+    bookId,
+    location
+  };
+  db.holdings.push(holding);
+  save();
+  f.reset();
+  renderAll();
+  flashRow('holdingTable', holding.id);
+});
+
+function renderHoldings() {
+  const tbody = document.querySelector('#holdingTable tbody');
+  tbody.innerHTML = '';
+  if (db.holdings.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">まだ所蔵が登録されていません</td></tr>';
+  } else {
+    db.holdings.forEach(holding => {
+      const book = findBook(holding.bookId);
+      const author = book ? findAuthor(book.authorId) : null;
+      const tr = document.createElement('tr');
+      tr.dataset.id = holding.id;
+      tr.innerHTML = `
+        <td><span class="fk-link">${formatId('holdings', holding.id)}</span></td>
+        <td><span class="fk-link">→ ${formatId('books', holding.bookId)}</span></td>
+        <td>${book ? escapeHtml(book.title) : '<em>(書籍不明)</em>'}</td>
+        <td>${author ? escapeHtml(author.name) : ''}</td>
+        <td>${escapeHtml(holding.location)}</td>
+        <td><button class="btn-delete" data-del="holding" data-id="${holding.id}">削除</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('holdingCount').textContent = `${db.holdings.length}件`;
+
+  const loanedIds = new Set(db.loans.map(loan => loan.holdingId));
+  const available = db.holdings.filter(holding => !loanedIds.has(holding.id));
+  const sel = document.querySelector('#loanForm select[name="holdingId"]');
+  sel.innerHTML = '<option value="">— 図書を選択 —</option>' +
+    available.map(holding => {
+      const book = findBook(holding.bookId);
+      return `<option value="${holding.id}">${formatId('holdings', holding.id)} / ${book ? escapeHtml(book.title) : '書籍不明'} / ${escapeHtml(holding.location)}</option>`;
+    }).join('');
+  document.getElementById('noHoldingHint').style.display = db.holdings.length === 0 ? 'block' : 'none';
+  document.getElementById('allLoanedHint').style.display = (db.holdings.length > 0 && available.length === 0) ? 'block' : 'none';
+}
+
+// === 利用者 ===
+document.getElementById('userForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const fields = f.elements;
+  const name = fields.name.value.trim();
+  const studentNumber = fields.studentNumber.value.trim();
+  const faculty = fields.faculty.value;
+  if (!name || !studentNumber || !faculty) return;
+
+  const user = {
+    id: db.nextId.users++,
+    studentNumber,
+    faculty,
+    name
+  };
+  db.users.push(user);
+  save();
+  f.reset();
+  renderAll();
+  flashRow('userTable', user.id);
+});
+
+function renderUsers() {
+  const tbody = document.querySelector('#userTable tbody');
+  tbody.innerHTML = '';
+  if (db.users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">まだ利用者が登録されていません</td></tr>';
+  } else {
+    db.users.forEach(user => {
+      const tr = document.createElement('tr');
+      tr.dataset.id = user.id;
+      tr.innerHTML = `
+        <td><span class="fk-link">${formatId('users', user.id)}</span></td>
+        <td>${escapeHtml(user.studentNumber)}</td>
+        <td>${escapeHtml(user.faculty)}</td>
+        <td>${escapeHtml(user.name)}</td>
+        <td><button class="btn-delete" data-del="user" data-id="${user.id}">削除</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('userCount').textContent = `${db.users.length}件`;
+
+  const sel = document.querySelector('#loanForm select[name="userId"]');
+  sel.innerHTML = '<option value="">— 利用者を選択 —</option>' +
+    db.users.map(user => `<option value="${user.id}">${formatId('users', user.id)} / ${escapeHtml(user.studentNumber)} / ${escapeHtml(user.name)}</option>`).join('');
+  document.getElementById('noUserHint').style.display = db.users.length === 0 ? 'block' : 'none';
+}
+
+// === 貸出 ===
+const today = new Date().toISOString().slice(0, 10);
+document.querySelector('#loanForm input[name="date"]').value = today;
+
+document.getElementById('loanForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const fields = f.elements;
+  const holdingId = parseInt(fields.holdingId.value, 10);
+  const userId = parseInt(fields.userId.value, 10);
+  const date = fields.date.value;
+  if (!holdingId || !userId || !date) return;
+
+  if (db.loans.some(loan => loan.holdingId === holdingId)) {
+    alert('この図書はすでに貸出中です。同じ図書IDを二重に貸し出すことはできません。');
+    return;
+  }
+
+  const loan = {
+    id: db.nextId.loans++,
+    holdingId,
+    userId,
+    date
+  };
+  db.loans.push(loan);
+  save();
+  f.reset();
+  document.querySelector('#loanForm input[name="date"]').value = today;
+  renderAll();
+  flashRow('loanTable', loan.id);
+});
+
+function renderLoans() {
+  const tbody = document.querySelector('#loanTable tbody');
+  tbody.innerHTML = '';
+  if (db.loans.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty">まだ貸出が記録されていません</td></tr>';
+  } else {
+    db.loans.forEach(loan => {
+      const holding = findHolding(loan.holdingId);
+      const book = holding ? findBook(holding.bookId) : null;
+      const user = findUser(loan.userId);
+      const tr = document.createElement('tr');
+      tr.dataset.id = loan.id;
+      tr.innerHTML = `
+        <td><span class="fk-link">${formatId('loans', loan.id)}</span></td>
+        <td><span class="fk-link">→ ${formatId('holdings', loan.holdingId)}</span></td>
+        <td><span class="fk-link">→ ${holding ? formatId('books', holding.bookId) : ''}</span></td>
+        <td>${book ? escapeHtml(book.title) : '<em>(書籍不明)</em>'}</td>
+        <td>${holding ? escapeHtml(holding.location) : ''}</td>
+        <td><span class="fk-link">→ ${formatId('users', loan.userId)}</span></td>
+        <td>${user ? escapeHtml(user.studentNumber) : ''}</td>
+        <td>${user ? escapeHtml(user.name) : '<em>(利用者不明)</em>'}</td>
+        <td>${loan.date}</td>
+        <td><button class="btn-delete" data-del="loan" data-id="${loan.id}">削除</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('loanCount').textContent = `${db.loans.length}件`;
+}
+
+// === 削除 ===
+document.body.addEventListener('click', e => {
+  const btn = e.target.closest('[data-del]');
+  if (!btn) return;
+  const type = btn.dataset.del;
+  const id = parseInt(btn.dataset.id, 10);
+
+  if (type === 'author') {
+    const used = db.books.some(book => book.authorId === id);
+    if (used) {
+      alert('この著者は書籍テーブルから参照されています。先に書籍を削除してください。\n（外部キー制約のイメージ）');
+      return;
+    }
+    db.authors = db.authors.filter(author => author.id !== id);
+  } else if (type === 'book') {
+    const used = db.holdings.some(holding => holding.bookId === id);
+    if (used) {
+      alert('この書籍は所蔵テーブルから参照されています。先に所蔵を削除してください。\n（外部キー制約のイメージ）');
+      return;
+    }
+    db.books = db.books.filter(book => book.id !== id);
+  } else if (type === 'holding') {
+    const used = db.loans.some(loan => loan.holdingId === id);
+    if (used) {
+      alert('この所蔵は貸出テーブルから参照されています。先に貸出を削除してください。\n（外部キー制約のイメージ）');
+      return;
+    }
+    db.holdings = db.holdings.filter(holding => holding.id !== id);
+  } else if (type === 'user') {
+    const used = db.loans.some(loan => loan.userId === id);
+    if (used) {
+      alert('この利用者は貸出テーブルから参照されています。先に貸出を削除してください。\n（外部キー制約のイメージ）');
+      return;
+    }
+    db.users = db.users.filter(user => user.id !== id);
+  } else if (type === 'loan') {
+    db.loans = db.loans.filter(loan => loan.id !== id);
+  }
+
+  save();
+  renderAll();
+});
+
+// === 検索 ===
+function renderAuthorSearchResults(query = currentAuthorQuery()) {
+  const tbody = document.querySelector('#searchResult tbody');
+  if (!tbody) return;
+  const q = query.trim().toLowerCase();
+  const authors = q ? db.authors.filter(author => authorMatches(author, q)) : db.authors;
+
+  tbody.innerHTML = '';
+  if (authors.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">該当なし</td></tr>';
+    return;
+  }
+
+  authors.forEach(author => {
+    const books = db.books
+      .filter(book => book.authorId === author.id)
+      .map(book => {
+        const holdings = db.holdings.filter(holding => holding.bookId === book.id).length;
+        return `${formatId('books', book.id)} ${escapeHtml(book.title)}（所蔵${holdings}冊）`;
+      })
+      .join('<br>');
+    tbody.innerHTML += `<tr>
+      <td><span class="fk-link">${formatId('authors', author.id)}</span></td>
+      <td>${escapeHtml(author.name)}</td>
+      <td>${escapeHtml(author.kana)}</td>
+      <td>${escapeHtml(author.roman)}</td>
+      <td>${escapeHtml(author.aliases || '')}</td>
+      <td>${formatLifeSpan(author)}</td>
+      <td>${books || '<span class="empty">著作なし</span>'}</td>
+    </tr>`;
+  });
+}
+
+function currentAuthorQuery() {
+  return document.getElementById('searchInput')?.value || '';
+}
+
+document.getElementById('searchForm').addEventListener('submit', e => {
+  e.preventDefault();
+  renderAuthorSearchResults(currentAuthorQuery());
+});
+
+function authorMatches(author, q) {
+  return [author.name, author.kana, author.roman, author.aliases]
+    .some(value => String(value || '').toLowerCase().includes(q));
+}
+
+// === 統計 ===
+function renderStats() {
+  const counts = document.getElementById('counts');
+  counts.innerHTML = `
+    <li>著者 <span class="num">${db.authors.length}</span></li>
+    <li>書籍 <span class="num">${db.books.length}</span></li>
+    <li>所蔵 <span class="num">${db.holdings.length}</span></li>
+    <li>利用者 <span class="num">${db.users.length}</span></li>
+    <li>貸出 <span class="num">${db.loans.length}</span></li>
+  `;
+
+  const ba = document.querySelector('#byAuthor tbody');
+  ba.innerHTML = '';
+  if (db.authors.length === 0) {
+    ba.innerHTML = '<tr><td colspan="3" class="empty">データなし</td></tr>';
+  } else {
+    db.authors.forEach(author => {
+      const bookIds = db.books.filter(book => book.authorId === author.id).map(book => book.id);
+      const n = db.holdings.filter(holding => bookIds.includes(holding.bookId)).length;
+      ba.innerHTML += `<tr><td>${formatId('authors', author.id)}</td><td>${escapeHtml(author.name)}</td><td>${n} 冊</td></tr>`;
+    });
+  }
+
+  document.getElementById('userTotal').textContent = `${db.users.length}人`;
+}
+
+// === リセット ===
+document.getElementById('resetAll').addEventListener('click', () => {
+  if (!confirm('本当にすべてのデータを初期データに戻しますか？')) return;
+  resetToDefaults();
+  save();
+  renderAll();
+});
+
+// === ユーティリティ ===
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
+function flashRow(tableId, id) {
+  setTimeout(() => {
+    const row = document.querySelector(`#${tableId} tr[data-id="${id}"]`);
+    if (row) row.classList.add('new');
+  }, 10);
+}
+
+function renderAll() {
+  renderAuthors();
+  renderBooks();
+  renderHoldings();
+  renderUsers();
+  renderLoans();
+  renderAuthorSearchResults();
+  renderStats();
+}
+
+// === 起動 ===
+load();
+renderAll();
