@@ -125,7 +125,13 @@
     <div class="card">
       <h3>新しい利用者を追加</h3>
       <form id="userForm" class="form-inline">
-        <label>学籍番号 <input type="text" name="studentNumber" required placeholder="例：AG20L001"></label>
+        <label>学籍番号・教職員番号 <input type="text" name="studentNumber" required placeholder="例：AG20L001"></label>
+        <label>区分
+          <select name="category" required>
+            <option value="学生">学生</option>
+            <option value="教員">教員</option>
+          </select>
+        </label>
         <label>学部 <input type="text" name="faculty" required placeholder="例：文学部"></label>
         <label>氏名 <input type="text" name="name" required placeholder="例：山田太郎"></label>
         <button type="submit" class="btn-primary">追加</button>
@@ -135,7 +141,7 @@
     <div class="card">
       <h3>利用者テーブル <span class="count" id="userCount">0件</span></h3>
       <table id="userTable">
-        <thead><tr><th>ID 🔑</th><th>学籍番号</th><th>学部</th><th>氏名</th><th></th></tr></thead>
+        <thead><tr><th>学籍番号・教職員番号 🔑</th><th>区分</th><th>学部</th><th>氏名</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -144,10 +150,10 @@
   <!-- ⑤ 貸出 -->
   <section id="loans" class="panel">
     <h2>⑤ 貸出テーブル</h2>
-    <p>本の貸出処理ができます。実務では図書のIDと利用者のIDを組み合わせて貸出処理を行っています。</p>
+    <p>本の貸出処理ができます。実務では図書のIDと利用者の学籍番号・教職員番号を組み合わせて貸出処理を行っています。</p>
 
     <div class="card">
-      <h3>新しい貸出を記録</h3>
+      <h3>貸出処理</h3>
       <form id="loanForm" class="form-inline">
         <label>図書 🔗
           <select name="holdingId" required>
@@ -161,7 +167,7 @@
           <a href="#" class="inline-link" data-goto="users">＋ 利用者テーブルで新規作成</a>
         </label>
         <label>貸出日 <input type="date" name="date" required></label>
-        <button type="submit" class="btn-primary">追加</button>
+        <button type="submit" class="btn-primary">貸出</button>
       </form>
       <p class="hint small" id="noHoldingHint" style="display:none;">⚠️ 所蔵がまだ登録されていません。先に③で所蔵を追加してください。</p>
       <p class="hint small" id="noUserHint" style="display:none;">⚠️ 利用者がまだ登録されていません。先に④で利用者を追加してください。</p>
@@ -169,9 +175,22 @@
     </div>
 
     <div class="card">
+      <h3>返却処理</h3>
+      <form id="returnForm" class="form-inline">
+        <label>図書
+          <select name="loanId" required>
+            <option value="">— 返却する図書を選択 —</option>
+          </select>
+        </label>
+        <button type="submit" class="btn-secondary">返却</button>
+      </form>
+      <p class="hint small" id="noReturnHint" style="display:none;">⚠️ 現在貸出中の図書はありません。</p>
+    </div>
+
+    <div class="card">
       <h3>貸出テーブル <span class="count" id="loanCount">0件</span></h3>
       <table id="loanTable">
-        <thead><tr><th>ID 🔑</th><th>図書ID 🔗</th><th>書籍ID 🔗</th><th>タイトル</th><th>配架場所</th><th>利用者ID 🔗</th><th>学籍番号</th><th>利用者名</th><th>貸出日</th><th></th></tr></thead>
+        <thead><tr><th>ID 🔑</th><th>図書ID 🔗</th><th>タイトル</th><th>配架場所</th><th>学籍番号・教職員番号 🔗</th><th>利用者名</th><th>貸出日</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>

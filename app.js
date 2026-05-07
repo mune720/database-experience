@@ -7,7 +7,6 @@ const ID_PREFIX = {
   authors: 'AID',
   books: 'BID',
   holdings: 'HID',
-  users: 'UID',
   loans: 'LID'
 };
 
@@ -68,11 +67,13 @@ const DEFAULT_HOLDINGS = [
 ];
 
 const DEFAULT_USERS = [
-  { id: 1, studentNumber: 'AG20L001', faculty: '文学部', name: '佐藤花子' },
-  { id: 2, studentNumber: 'AG21I002', faculty: '情報学部', name: '鈴木一郎' },
-  { id: 3, studentNumber: 'AG22E003', faculty: '教育学部', name: '田中美咲' },
-  { id: 4, studentNumber: 'AG23A004', faculty: '芸術学部', name: '山本健太' },
-  { id: 5, studentNumber: 'AG24S005', faculty: '理学部', name: '高橋直子' }
+  { studentNumber: 'AG20L001', category: '学生', faculty: '文学部', name: '佐藤花子' },
+  { studentNumber: 'AG21I002', category: '学生', faculty: '情報学部', name: '鈴木一郎' },
+  { studentNumber: 'AG22E003', category: '学生', faculty: '教育学部', name: '田中美咲' },
+  { studentNumber: 'AG23A004', category: '学生', faculty: '芸術学部', name: '山本健太' },
+  { studentNumber: 'AG24S005', category: '学生', faculty: '理学部', name: '高橋直子' },
+  { studentNumber: 'AGT001', category: '教員', faculty: '文学部', name: '伊藤真理子' },
+  { studentNumber: 'AGT002', category: '教員', faculty: '情報学部', name: '中村修' }
 ];
 
 const db = {
@@ -179,20 +180,36 @@ function normalizeDb() {
     location: LOCATIONS.includes(holding.location) ? holding.location : LOCATIONS[0]
   }));
 
-  db.users = db.users.map(user => {
-    const id = normalizeId(user.id);
+  const legacyUserIdToStudentNumber = new Map();
+  const legacyUsers = db.users;
+
+  const hadUserCategory = legacyUsers.some(user => user.category);
+  db.users = legacyUsers.map((user, index) => {
+    const legacyId = normalizeId(user.id);
     const faculty = user.faculty || '文学部';
+    const studentNumber = String(user.studentNumber || generateStudentNumber(legacyId || index + 1, faculty)).trim();
+    if (legacyId && studentNumber) legacyUserIdToStudentNumber.set(legacyId, studentNumber);
     return {
-      id,
-      studentNumber: user.studentNumber || generateStudentNumber(id, faculty),
+      studentNumber,
+      category: normalizeUserCategory(user.category),
       faculty,
       name: user.name || ''
     };
   });
 
+  if (legacyUsers.length > 0 && !hadUserCategory) {
+    DEFAULT_USERS
+      .filter(user => user.category === '教員')
+      .forEach(defaultUser => {
+        if (!db.users.some(user => user.studentNumber === defaultUser.studentNumber)) {
+          db.users.push({ ...defaultUser });
+        }
+      });
+  }
+
   db.loans = db.loans.map(loan => {
     const holdingId = loan.holdingId ? normalizeId(loan.holdingId) : ensureHoldingFromLegacyLoan(loan.bookId);
-    const userId = loan.userId ? normalizeId(loan.userId) : ensureUserFromLegacyLoan(loan.user);
+    const userId = normalizeUserReference(loan.userId, loan.user, legacyUserIdToStudentNumber);
     return {
       id: normalizeId(loan.id),
       holdingId,
@@ -214,24 +231,38 @@ function ensureHoldingFromLegacyLoan(bookId) {
   return id;
 }
 
+function normalizeUserReference(value, userName, legacyUserIdToStudentNumber) {
+  const numericId = normalizeId(value);
+  if (numericId && legacyUserIdToStudentNumber.has(numericId)) {
+    return legacyUserIdToStudentNumber.get(numericId);
+  }
+  const text = value === null || value === undefined ? '' : String(value).trim();
+  if (text) return text;
+  return ensureUserFromLegacyLoan(userName);
+}
+
 function ensureUserFromLegacyLoan(userName) {
   const name = typeof userName === 'string' ? userName.trim() : '';
-  if (!name) return null;
+  if (!name) return '';
   const existing = db.users.find(user => user.name === name);
-  if (existing) return existing.id;
-  const id = nextAvailableId(db.users);
+  if (existing) return existing.studentNumber;
   const faculty = '文学部';
+  const studentNumber = generateStudentNumber(db.users.length + 1, faculty);
   db.users.push({
-    id,
-    studentNumber: generateStudentNumber(id, faculty),
+    studentNumber,
+    category: '学生',
     faculty,
     name
   });
-  return id;
+  return studentNumber;
 }
 
 function generateStudentNumber(id, faculty) {
   return `AG20${facultyInitial(faculty)}${String(id || 1).padStart(3, '0')}`;
+}
+
+function normalizeUserCategory(category) {
+  return category === '教員' ? '教員' : '学生';
 }
 
 function facultyInitial(faculty) {
@@ -293,7 +324,10 @@ function createRenderContext() {
   const authorsById = mapById(db.authors);
   const booksById = mapById(db.books);
   const holdingsById = mapById(db.holdings);
-  const usersById = mapById(db.users);
+  const usersById = new Map();
+  db.users.forEach(user => {
+    if (!usersById.has(user.studentNumber)) usersById.set(user.studentNumber, user);
+  });
   const booksByAuthorId = new Map();
   const holdingsByBookId = new Map();
   const loanedHoldingIds = new Set(db.loans.map(loan => loan.holdingId));
@@ -336,7 +370,7 @@ function findHolding(id) {
 }
 
 function findUser(id) {
-  return renderContext?.usersById.get(id) || db.users.find(user => user.id === id);
+  return renderContext?.usersById.get(id) || db.users.find(user => user.studentNumber === id || user.id === id);
 }
 
 function formatLifeSpan(author) {
@@ -537,12 +571,18 @@ document.getElementById('userForm').addEventListener('submit', e => {
   const fields = f.elements;
   const name = fields.name.value.trim();
   const studentNumber = fields.studentNumber.value.trim();
-  const faculty = fields.faculty.value;
-  if (!name || !studentNumber || !faculty) return;
+  const category = normalizeUserCategory(fields.category.value);
+  const faculty = fields.faculty.value.trim();
+  if (!name || !studentNumber || !category || !faculty) return;
+
+  if (db.users.some(user => user.studentNumber === studentNumber)) {
+    alert('この学籍番号・教職員番号はすでに登録されています。');
+    return;
+  }
 
   const user = {
-    id: db.nextId.users++,
     studentNumber,
+    category,
     faculty,
     name
   };
@@ -550,7 +590,7 @@ document.getElementById('userForm').addEventListener('submit', e => {
   save();
   f.reset();
   renderAll();
-  flashRow('userTable', user.id);
+  flashRow('userTable', user.studentNumber);
 });
 
 function renderUsers() {
@@ -558,32 +598,48 @@ function renderUsers() {
   if (db.users.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" class="empty">まだ利用者が登録されていません</td></tr>';
   } else {
-    tbody.innerHTML = db.users.map(user => `<tr data-id="${user.id}">
-        <td><span class="fk-link">${formatId('users', user.id)}</span></td>
-        <td>${escapeHtml(user.studentNumber)}</td>
+    tbody.innerHTML = db.users.map(user => `<tr data-id="${escapeHtml(user.studentNumber)}">
+        <td><span class="fk-link">${escapeHtml(user.studentNumber)}</span></td>
+        <td>${escapeHtml(user.category)}</td>
         <td>${escapeHtml(user.faculty)}</td>
         <td>${escapeHtml(user.name)}</td>
-        <td><button class="btn-delete" data-del="user" data-id="${user.id}">削除</button></td>
+        <td><button class="btn-delete" data-del="user" data-id="${escapeHtml(user.studentNumber)}">削除</button></td>
       </tr>`).join('');
   }
   document.getElementById('userCount').textContent = `${db.users.length}件`;
 
   const sel = document.querySelector('#loanForm select[name="userId"]');
   sel.innerHTML = '<option value="">— 利用者を選択 —</option>' +
-    db.users.map(user => `<option value="${user.id}">${formatId('users', user.id)} / ${escapeHtml(user.studentNumber)} / ${escapeHtml(user.name)}</option>`).join('');
+    db.users.map(user => `<option value="${escapeHtml(user.studentNumber)}">${escapeHtml(user.studentNumber)} / ${escapeHtml(user.name)}</option>`).join('');
   document.getElementById('noUserHint').style.display = db.users.length === 0 ? 'block' : 'none';
 }
 
 // === 貸出 ===
-const today = new Date().toISOString().slice(0, 10);
-document.querySelector('#loanForm input[name="date"]').value = today;
+function formatDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function dateAfterDays(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return formatDateValue(date);
+}
+
+function setDefaultLoanDate() {
+  document.querySelector('#loanForm input[name="date"]').value = dateAfterDays(14);
+}
+
+setDefaultLoanDate();
 
 document.getElementById('loanForm').addEventListener('submit', e => {
   e.preventDefault();
   const f = e.target;
   const fields = f.elements;
   const holdingId = parseInt(fields.holdingId.value, 10);
-  const userId = parseInt(fields.userId.value, 10);
+  const userId = fields.userId.value.trim();
   const date = fields.date.value;
   if (!holdingId || !userId || !date) return;
 
@@ -601,16 +657,27 @@ document.getElementById('loanForm').addEventListener('submit', e => {
   db.loans.push(loan);
   save();
   f.reset();
-  document.querySelector('#loanForm input[name="date"]').value = today;
+  setDefaultLoanDate();
   renderAll();
   flashRow('loanTable', loan.id);
+});
+
+document.getElementById('returnForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const loanId = parseInt(f.elements.loanId.value, 10);
+  if (!loanId) return;
+  db.loans = db.loans.filter(loan => loan.id !== loanId);
+  save();
+  f.reset();
+  renderAll();
 });
 
 function renderLoans(ctx) {
   const context = currentRenderContext(ctx);
   const tbody = document.querySelector('#loanTable tbody');
   if (db.loans.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" class="empty">まだ貸出が記録されていません</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">まだ貸出が記録されていません</td></tr>';
   } else {
     tbody.innerHTML = db.loans.map(loan => {
       const holding = context.holdingsById.get(loan.holdingId);
@@ -619,11 +686,9 @@ function renderLoans(ctx) {
       return `<tr data-id="${loan.id}">
         <td><span class="fk-link">${formatId('loans', loan.id)}</span></td>
         <td><span class="fk-link">→ ${formatId('holdings', loan.holdingId)}</span></td>
-        <td><span class="fk-link">→ ${holding ? formatId('books', holding.bookId) : ''}</span></td>
         <td>${book ? escapeHtml(book.title) : '<em>(書籍不明)</em>'}</td>
         <td>${holding ? escapeHtml(holding.location) : ''}</td>
-        <td><span class="fk-link">→ ${formatId('users', loan.userId)}</span></td>
-        <td>${user ? escapeHtml(user.studentNumber) : ''}</td>
+        <td><span class="fk-link">→ ${escapeHtml(loan.userId)}</span></td>
         <td>${user ? escapeHtml(user.name) : '<em>(利用者不明)</em>'}</td>
         <td>${loan.date}</td>
         <td><button class="btn-delete" data-del="loan" data-id="${loan.id}">削除</button></td>
@@ -631,6 +696,21 @@ function renderLoans(ctx) {
     }).join('');
   }
   document.getElementById('loanCount').textContent = `${db.loans.length}件`;
+  renderReturnOptions(context);
+}
+
+function renderReturnOptions(ctx) {
+  const context = currentRenderContext(ctx);
+  const sel = document.querySelector('#returnForm select[name="loanId"]');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— 返却する図書を選択 —</option>' +
+    db.loans.map(loan => {
+      const holding = context.holdingsById.get(loan.holdingId);
+      const book = holding ? context.booksById.get(holding.bookId) : null;
+      const user = context.usersById.get(loan.userId);
+      return `<option value="${loan.id}">${formatId('holdings', loan.holdingId)} / ${book ? escapeHtml(book.title) : '書籍不明'} / ${user ? escapeHtml(user.name) : '利用者不明'}</option>`;
+    }).join('');
+  document.getElementById('noReturnHint').style.display = db.loans.length === 0 ? 'block' : 'none';
 }
 
 // === 削除 ===
@@ -638,7 +718,8 @@ document.body.addEventListener('click', e => {
   const btn = e.target.closest('[data-del]');
   if (!btn) return;
   const type = btn.dataset.del;
-  const id = parseInt(btn.dataset.id, 10);
+  const rawId = btn.dataset.id;
+  const id = parseInt(rawId, 10);
 
   if (type === 'author') {
     const used = db.books.some(book => book.authorId === id);
@@ -662,12 +743,12 @@ document.body.addEventListener('click', e => {
     }
     db.holdings = db.holdings.filter(holding => holding.id !== id);
   } else if (type === 'user') {
-    const used = db.loans.some(loan => loan.userId === id);
+    const used = db.loans.some(loan => loan.userId === rawId);
     if (used) {
       alert('この利用者は貸出テーブルから参照されています。先に貸出を削除してください。\n（外部キー制約のイメージ）');
       return;
     }
-    db.users = db.users.filter(user => user.id !== id);
+    db.users = db.users.filter(user => user.studentNumber !== rawId);
   } else if (type === 'loan') {
     db.loans = db.loans.filter(loan => loan.id !== id);
   }
@@ -890,7 +971,8 @@ function escapeHtml(s) {
 
 function flashRow(tableId, id) {
   setTimeout(() => {
-    const row = document.querySelector(`#${tableId} tr[data-id="${id}"]`);
+    const row = Array.from(document.querySelectorAll(`#${tableId} tr[data-id]`))
+      .find(candidate => candidate.dataset.id === String(id));
     if (row) row.classList.add('new');
   }, 10);
 }
