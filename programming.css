@@ -354,6 +354,339 @@
 .status-pill.is-error { background: #fdecea; color: #c0392b; }
 .status-pill.is-ok { background: #edf7f2; color: #216e4e; }
 
+/* 上部のモード切り替えタブ */
+.mode-tabs {
+  margin-bottom: 1.2rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid #dbe4ec;
+}
+
+.mode-tabs .activity-tab {
+  flex: 1 1 200px;
+  min-height: 3.2rem;
+  font-size: 1rem;
+}
+
+/* ===== 要件定義ワークシート ===== */
+.req-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.req-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 700;
+  color: #4b5b68;
+  font-size: 0.92rem;
+}
+
+.req-field input,
+.req-field textarea,
+.req-group input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  background: #fff;
+  color: #2c3e50;
+  font: inherit;
+  font-weight: 400;
+}
+
+.req-field textarea {
+  resize: vertical;
+}
+
+.req-field input:focus,
+.req-field textarea:focus,
+.req-group input:focus {
+  outline: none;
+  border-color: #4a6fa5;
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.2);
+}
+
+.req-group {
+  margin: 0;
+  padding: 0.8rem 0.9rem 0.95rem;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.req-group legend {
+  font-weight: 700;
+  color: #4b5b68;
+  font-size: 0.92rem;
+  padding: 0 0.35rem;
+}
+
+/* 要件定義書プレビュー */
+.req-doc {
+  flex: 1;
+  min-height: 420px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  background: #fffdf5;
+  padding: 1.3rem 1.5rem;
+  color: #2c3e50;
+  font-size: 0.98rem;
+  line-height: 1.7;
+}
+
+.req-doc-title {
+  margin: 0 0 0.3rem;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #166088;
+  letter-spacing: 0.25em;
+}
+
+.req-doc-name {
+  margin: 0 0 1.2rem;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.req-doc-h {
+  margin: 1.1rem 0 0.35rem;
+  font-size: 0.98rem;
+  color: #166088;
+  border-bottom: 1px solid #e8e0c8;
+  padding-bottom: 0.25rem;
+}
+
+.req-doc-p {
+  margin: 0;
+}
+
+.req-doc-list {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.req-doc-list li {
+  padding: 0.1rem 0;
+}
+
+.req-empty {
+  color: #98a4ae;
+}
+
+/* ===== フローチャート組み立て ===== */
+.fc-legend-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  margin-top: 0.9rem;
+}
+
+.fc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.fc-legend-item p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #2c3e50;
+}
+
+/* カード置き場 */
+.fc-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.6rem;
+  min-height: 140px;
+  padding: 0.9rem;
+  border: 1px dashed #b9c6d2;
+  border-radius: 6px;
+  background: #f8fbff;
+}
+
+.fc-card {
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #fff;
+  padding: 0.55rem 0.85rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: #2c3e50;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.fc-card:hover {
+  background: #eef4fa;
+  border-color: #9db9ca;
+}
+
+.fc-tray-empty {
+  margin: 0;
+  align-self: center;
+  color: #4b5b68;
+  font-size: 0.95rem;
+}
+
+/* 組み立てエリア */
+.fc-chart {
+  flex: 1;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.8rem 0.4rem;
+  overflow: auto;
+}
+
+.fc-node {
+  width: min(400px, 100%);
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  color: #2c3e50;
+  box-sizing: border-box;
+}
+
+.fc-terminal {
+  width: min(200px, 100%);
+  border: 2px solid #4a6fa5;
+  border-radius: 999px;
+  background: #e3edf3;
+  font-weight: 700;
+}
+
+.fc-process {
+  border: 2px solid #4a6fa5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.fc-decision {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  background: #ffe9a8;
+  padding: 1.4rem 3.2rem;
+  min-height: 5.2rem;
+}
+
+.fc-mini {
+  width: auto;
+  min-height: 2.2rem;
+  font-size: 0.9rem;
+  padding: 0.3rem 1rem;
+}
+
+.fc-mini.fc-decision {
+  padding: 0.9rem 2.2rem;
+  min-height: 3.2rem;
+}
+
+/* マス（スロット）の状態 */
+.fc-slot {
+  cursor: pointer;
+}
+
+.fc-slot.is-empty.fc-process {
+  border-style: dashed;
+  background: #f2f6fa;
+  color: #8aa0b4;
+}
+
+.fc-slot.is-empty.fc-decision {
+  background: #eceef1;
+  color: #8aa0b4;
+}
+
+.fc-slot.is-ok.fc-process {
+  border-color: #2e8b57;
+  background: #edf7f2;
+}
+
+.fc-slot.is-ok.fc-decision {
+  background: #cdeedd;
+}
+
+.fc-slot.is-ng.fc-process {
+  border-color: #e74c3c;
+  background: #fdecea;
+}
+
+.fc-slot.is-ng.fc-decision {
+  background: #f6cfc7;
+}
+
+/* 矢印と分岐 */
+.fc-arrow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #4a6fa5;
+  font-size: 1.3rem;
+  line-height: 1.1;
+}
+
+.fc-arrow-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4b5b68;
+}
+
+.fc-branch {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+}
+
+.fc-branch .fc-decision {
+  flex: 0 1 320px;
+  min-width: 250px;
+  width: auto;
+}
+
+.fc-branch .fc-branch-side .fc-node {
+  flex: 1 1 auto;
+  min-width: 170px;
+  width: 100%;
+}
+
+.fc-branch-link {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4b5b68;
+  white-space: nowrap;
+}
+
+.fc-branch-side {
+  flex: 1 1 200px;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.fc-branch-end {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4b5b68;
+}
+
 @media (max-width: 980px) {
   .code-workbench {
     grid-template-columns: 1fr;

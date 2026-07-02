@@ -12,10 +12,18 @@
 <header>
   <a class="home-link" href="index.html">トップへ戻る</a>
   <h1>💻 プログラミング体験</h1>
-  <p class="subtitle">図書館情報技術論 ／ 左にコードを書くと、右に結果がすぐ表示されます</p>
+  <p class="subtitle" id="pageSubtitle">図書館情報技術論 ／ 左にコードを書くと、右に結果がすぐ表示されます</p>
 </header>
 
 <main class="course-main code-main">
+  <nav class="activity-tabs mode-tabs" aria-label="体験の切り替え">
+    <button class="activity-tab active" type="button" data-mode="programming">💻 プログラミング</button>
+    <button class="activity-tab" type="button" data-mode="requirements">📋 要件定義</button>
+    <button class="activity-tab" type="button" data-mode="flowchart">🔀 フローチャート</button>
+  </nav>
+
+  <div id="modeProgramming" class="mode-section">
+
   <nav class="activity-tabs lang-tabs" aria-label="言語の切り替え">
     <button class="activity-tab active" type="button" data-lang="js">JavaScript</button>
     <button class="activity-tab" type="button" data-lang="python">Python</button>
@@ -110,6 +118,117 @@
       </details>
     </section>
   </section>
+
+  </div><!-- /modeProgramming -->
+
+  <div id="modeRequirements" class="mode-section" hidden>
+    <p class="code-lead">プログラムを作る前に「誰が・何のために・何ができるか」を言葉で決める工程が<strong>要件定義</strong>です。図書館の貸出システムを題材に、要件定義書を完成させましょう。</p>
+
+    <section class="code-workbench" aria-label="要件定義の入力とプレビュー">
+      <div class="course-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="course-kicker">Requirements</p>
+            <h2>書いてみる</h2>
+          </div>
+        </div>
+
+        <div class="editor-toolbar">
+          <button id="reqExampleBtn" class="btn-secondary" type="button">お手本を入れる</button>
+          <button id="reqClearBtn" class="btn-secondary" type="button">まっさらにする</button>
+        </div>
+
+        <div class="req-form">
+          <label class="req-field">システムの名前
+            <input id="reqName" type="text" placeholder="例：としょかん貸出システム" autocomplete="off">
+          </label>
+          <label class="req-field">誰が使う？（利用者）
+            <input id="reqUsers" type="text" placeholder="例：学生・教員・司書" autocomplete="off">
+          </label>
+          <label class="req-field">何のために？（目的）
+            <textarea id="reqPurpose" rows="2" placeholder="例：本の貸出と返却を、待たせずに正確に行うため"></textarea>
+          </label>
+          <fieldset class="req-group">
+            <legend>できること（機能）</legend>
+            <input id="reqFunc1" type="text" placeholder="例：カードとバーコードで貸出ができる" autocomplete="off">
+            <input id="reqFunc2" type="text" placeholder="例：返却すると貸出の記録が消える" autocomplete="off">
+            <input id="reqFunc3" type="text" placeholder="例：延滞している人にお知らせが届く" autocomplete="off">
+          </fieldset>
+          <fieldset class="req-group">
+            <legend>守るべき条件（ルール）</legend>
+            <input id="reqRule1" type="text" placeholder="例：借りられるのは1人10冊まで" autocomplete="off">
+            <input id="reqRule2" type="text" placeholder="例：誰が何を借りたかは他人に見せない" autocomplete="off">
+          </fieldset>
+        </div>
+      </div>
+
+      <section class="course-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="course-kicker">Document</p>
+            <h2>要件定義書</h2>
+          </div>
+          <span id="reqStatus" class="status-pill" aria-live="polite">記入中</span>
+        </div>
+        <div id="reqDoc" class="req-doc"></div>
+      </section>
+    </section>
+  </div><!-- /modeRequirements -->
+
+  <div id="modeFlowchart" class="mode-section" hidden>
+    <p class="code-lead">処理の流れを図にしたものが<strong>フローチャート</strong>です。カードを選んで、図書館の仕事の流れを組み立てましょう。</p>
+
+    <details class="lang-info" id="fcLegend">
+      <summary>フローチャートの記号（クリックで開く）</summary>
+      <div class="fc-legend-grid">
+        <div class="fc-legend-item">
+          <span class="fc-node fc-terminal fc-mini">開始・終了</span>
+          <p>端子 ― 流れの始まりと終わり</p>
+        </div>
+        <div class="fc-legend-item">
+          <span class="fc-node fc-process fc-mini">処理</span>
+          <p>処理 ― やることを1つ書く</p>
+        </div>
+        <div class="fc-legend-item">
+          <span class="fc-node fc-decision fc-mini">条件？</span>
+          <p>判断 ―「はい／いいえ」で分ける</p>
+        </div>
+      </div>
+    </details>
+
+    <section class="code-workbench" aria-label="フローチャートの組み立て">
+      <div class="course-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="course-kicker">Parts</p>
+            <h2>カード置き場</h2>
+          </div>
+          <label class="tmpl-label">問題
+            <select id="fcSelect" aria-label="問題を選ぶ"></select>
+          </label>
+        </div>
+
+        <div class="editor-toolbar">
+          <button id="fcCheckBtn" class="btn-primary" type="button">答え合わせ</button>
+          <button id="fcResetBtn" class="btn-secondary" type="button">やり直す</button>
+        </div>
+
+        <div id="fcTray" class="fc-tray" aria-label="カード置き場"></div>
+        <p class="code-explain">カードを押すと、右の空いているマスに入ります。置いたカードを押すと、ここに戻せます。</p>
+      </div>
+
+      <section class="course-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="course-kicker">Flowchart</p>
+            <h2>組み立てエリア</h2>
+          </div>
+          <span id="fcStatus" class="status-pill" aria-live="polite">組み立て中</span>
+        </div>
+        <div id="fcChart" class="fc-chart"></div>
+      </section>
+    </section>
+  </div><!-- /modeFlowchart -->
 </main>
 
 <footer>
@@ -118,5 +237,6 @@
 </footer>
 
 <script src="programming.js"></script>
+<script src="activities.js"></script>
 </body>
 </html>
