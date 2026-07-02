@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文字コードの違い — 図書館情報技術論</title>
+  <link rel="stylesheet" href="./styles.css?v=5">
+</head>
+<body>
+  <header>
+    <a class="home-link" href="../../index.html">トップへ戻る</a>
+    <h1>文字コードの違い</h1>
+  </header>
+
+  <main class="app-shell">
+    <section class="encoding-grid">
+      <section class="panel input-panel">
+        <div class="panel-header">
+          <div>
+            <h2>文字</h2>
+            <p id="summaryText">保存コードを変えると、バイト列と読み取り結果がどう変わるかを見られます。</p>
+          </div>
+          <button class="ghost-button" type="button" id="resetButton">リセット</button>
+        </div>
+
+        <textarea id="textInput" spellcheck="false" maxlength="160">こんにちは、よろしくお願いします。
+ABC 123 ｶﾀｶﾅ 髙橋 ① 😀</textarea>
+
+        <div class="sample-row" aria-label="サンプル">
+          <button type="button" class="sample-button" data-sample="こんにちは、よろしくお願いします。">日本語</button>
+          <button type="button" class="sample-button" data-sample="ABC 123 / cafe">英数字</button>
+          <button type="button" class="sample-button" data-sample="ｶﾀｶﾅ と カタカナ">半角カナ</button>
+          <button type="button" class="sample-button" data-sample="髙橋 ① ㈱ 😀">表現しにくい文字</button>
+        </div>
+
+        <div class="encoding-guide" aria-label="文字コードの説明">
+          <article>
+            <h3>Unicode (UTF-8)</h3>
+            <p>現在のWebで広く使われる文字コードです。多言語や絵文字を扱いやすい方式です。</p>
+          </article>
+          <article>
+            <h3>Shift_JIS</h3>
+            <p>日本語Windows環境で長く使われました。古いCSVや業務データで見かけます。</p>
+          </article>
+          <article>
+            <h3>EUC-JP</h3>
+            <p>日本語Unix系環境で使われてきた文字コードです。古いシステムで残ることがあります。</p>
+          </article>
+          <article>
+            <h3>UTF-16LE</h3>
+            <p>1文字を主に2バイト単位で扱うUnicodeの表現です。読み方を間違えると大きく崩れます。</p>
+          </article>
+        </div>
+      </section>
+
+      <aside class="panel controls-panel">
+        <div class="panel-header compact">
+          <div>
+            <h2>変える</h2>
+            <p>保存するコードを選びます。</p>
+          </div>
+        </div>
+
+        <label class="select-field">
+          <span>保存するコード</span>
+          <select id="savedEncoding">
+            <option value="utf8">Unicode (UTF-8)</option>
+            <option value="shift_jis" selected>Shift_JIS</option>
+            <option value="euc-jp">EUC-JP</option>
+            <option value="utf16le">Unicode (UTF-16LE)</option>
+          </select>
+        </label>
+
+        <div class="meter">
+          <div>
+            <span class="meter-label">バイト数</span>
+            <strong id="byteCount">0</strong>
+          </div>
+          <div>
+            <span class="meter-label">文字数</span>
+            <strong id="charCount">0</strong>
+          </div>
+        </div>
+
+        <p class="message" id="messageArea" role="status" aria-live="polite"></p>
+      </aside>
+    </section>
+
+    <section class="panel bytes-panel">
+      <div class="panel-header">
+        <div>
+          <h2>保存されたバイト列</h2>
+          <p id="byteCaption">同じ文字でも、保存コードが変わると数字の並びが変わります。</p>
+        </div>
+      </div>
+      <div class="byte-grid" id="byteGrid"></div>
+    </section>
+
+    <section class="comparison-grid" id="readingGrid" aria-label="読み取り結果"></section>
+
+    <section class="panel unicode-panel">
+      <div class="panel-header">
+        <div>
+          <h2>文字そのもの</h2>
+          <p>画面上の文字は Unicode の番号で区別されています。</p>
+        </div>
+      </div>
+      <div class="codepoint-list" id="codePointList"></div>
+    </section>
+  </main>
+
+  <script src="./encoding-maps.js?v=5"></script>
+  <script src="./app.js?v=5"></script>
+</body>
+</html>

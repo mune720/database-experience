@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サンプルアーカイブ作成（管理用） — 図書館情報技術論</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="course.css">
+<link rel="stylesheet" href="archive.css">
+</head>
+<body class="archive-page">
+<header>
+  <a class="home-link" href="index.html">トップへ戻る</a>
+  <h1>🌷 サンプルアーカイブ作成（管理用）</h1>
+</header>
+
+<main class="course-main archive-main">
+  <div class="card">
+    <h3>受講生の参考用サンプルを作成します</h3>
+    <p class="hint small">花の画像6点と、ダブリンコアのメタデータ記入例を含む「<strong>春から秋の花だより（サンプル）</strong>」を共有アーカイブに1つ追加します。受講生が「良い例」として参考にできます。</p>
+    <ul class="seed-note">
+      <li>押すと共有アーカイブにサンプルが追加され、全員に表示されます。</li>
+      <li>すでに同名のサンプルがある場合は、重複して作成しません。</li>
+      <li>この端末が所有者として記録され、通常画面の「削除」ボタンから後で消せます。</li>
+      <li>作成後、この <code>archive-seed.html</code> / <code>archive-seed.js</code> は削除して構いません（管理用のため受講生には不要です）。</li>
+    </ul>
+    <div class="modal-actions" style="justify-content:flex-start;">
+      <button id="seedBtn" class="btn-primary" type="button">サンプルアーカイブを作成する</button>
+    </div>
+    <div id="seedStatus" class="seed-status"></div>
+  </div>
+</main>
+
+<footer>
+  <p>図書館情報技術論</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="archive-config.js"></script>
+<script src="archive-seed.js"></script>
+</body>
+</html>

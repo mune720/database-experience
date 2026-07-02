@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>情報検索のしくみ — 図書館情報技術論</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="course.css">
+</head>
+<body>
+<header>
+  <a class="home-link" href="index.html">トップへ戻る</a>
+  <h1>情報検索のしくみ</h1>
+</header>
+
+<main class="course-main">
+  <nav class="activity-tabs" aria-label="体験の切り替え">
+    <button class="activity-tab active" type="button" data-activity="searchActivity">検索方式を切り替えて結果を比べる</button>
+    <button class="activity-tab" type="button" data-activity="directoryActivity">ディレクトリ型検索エンジンを作る</button>
+  </nav>
+
+  <section id="searchActivity" class="course-section activity-panel">
+    <h2>検索方式を切り替えて結果を比べる</h2>
+    <p>同じ検索語でも、照合のルールが変わるとヒットする書誌、件数、並び順が変わります。</p>
+
+    <div class="method-tabs" role="tablist" aria-label="検索方式">
+      <button class="method-tab active" type="button" data-mode="partial">部分一致</button>
+      <button class="method-tab" type="button" data-mode="exact">完全一致</button>
+      <button class="method-tab" type="button" data-mode="ngram">Nグラム</button>
+      <button class="method-tab" type="button" data-mode="boolean">ブール演算</button>
+      <button class="method-tab" type="button" data-mode="phrase">フレーズ</button>
+      <button class="method-tab" type="button" data-mode="wildcard">ワイルドカード</button>
+      <button class="method-tab" type="button" data-mode="associative">連想検索</button>
+    </div>
+
+    <div class="search-layout">
+      <aside class="course-panel search-box">
+        <form id="searchForm" class="field-stack">
+          <div id="normalFields">
+            <label>検索語
+              <input id="searchQuery" type="text" autocomplete="off" value="図書館" placeholder="例：図書館">
+            </label>
+          </div>
+
+          <fieldset class="scope-options">
+            <legend>検索対象</legend>
+            <label><input id="scopeTitle" type="checkbox" checked disabled> タイトル</label>
+            <label><input id="scopeBody" type="checkbox"> 内容紹介を含む</label>
+            <label><input id="scopeSubjects" type="checkbox"> 件名・キーワードを含む</label>
+          </fieldset>
+
+          <div id="booleanFields" class="field-stack" hidden>
+            <label>語A
+              <input id="booleanA" type="text" autocomplete="off" value="図書館" placeholder="例：図書館">
+            </label>
+            <label>演算
+              <select id="booleanOperator">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+                <option value="NOT">NOT</option>
+              </select>
+            </label>
+            <label>語B
+              <input id="booleanB" type="text" autocomplete="off" value="サービス" placeholder="例：サービス">
+            </label>
+          </div>
+
+          <div id="ngramFields" hidden>
+            <label>Nの大きさ
+              <select id="ngramSize">
+                <option value="1">1文字</option>
+                <option value="2" selected>2文字</option>
+                <option value="3">3文字</option>
+                <option value="4">4文字</option>
+              </select>
+            </label>
+          </div>
+
+        </form>
+
+        <div class="search-meter" aria-live="polite">
+          <div class="meter-card">
+            <span class="meter-label">検索方式</span>
+            <span class="meter-value" id="modeName">部分一致</span>
+          </div>
+          <div class="meter-card">
+            <span class="meter-label">ヒット件数</span>
+            <span class="meter-value" id="resultCount">0</span>
+          </div>
+          <div class="meter-card">
+            <span class="meter-label">書誌総数</span>
+            <span class="meter-value" id="targetCount">0</span>
+          </div>
+          <div class="meter-card">
+            <span class="meter-label">精度</span>
+            <span class="meter-value" id="precisionValue">0%</span>
+          </div>
+          <div class="meter-card">
+            <span class="meter-label">再現率</span>
+            <span class="meter-value" id="recallValue">0%</span>
+          </div>
+        </div>
+
+        <div id="modeExplanation" class="hint"></div>
+        <div id="tokenZone" class="token-zone"></div>
+        <div id="vennZone" class="venn-zone"></div>
+      </aside>
+
+      <section>
+        <div id="resultList" class="result-list"></div>
+      </section>
+    </div>
+  </section>
+
+  <section id="directoryActivity" class="course-section activity-panel" hidden>
+    <h2>ディレクトリ型検索エンジンを作る</h2>
+
+    <div class="button-row">
+      <button id="resetDirectory" class="btn-secondary" type="button">分類をリセット</button>
+    </div>
+
+    <div class="directory-layout">
+      <aside class="category-board" id="categoryBoard" aria-label="分類カテゴリ"></aside>
+      <section class="directory-cards" id="directoryCards" aria-label="分類するWebページ"></section>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p class="footer-note">※ このページの操作はブラウザ上だけで完結します。</p>
+  <p>図書館情報技術論</p>
+</footer>
+
+<script src="search.js"></script>
+</body>
+</html>

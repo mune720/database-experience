@@ -1,0 +1,364 @@
+/* プログラミング体験ページ専用スタイル
+   既存の style.css / course.css を踏襲し、不足分のみ定義する。 */
+
+.code-main {
+  max-width: 1360px;
+}
+
+.lang-tabs {
+  margin-bottom: 0.9rem;
+}
+
+.lang-tabs .activity-tab {
+  flex: 1 1 150px;
+}
+
+.code-lead {
+  margin: 0 0 1rem;
+  color: #4b5b68;
+  font-size: 0.95rem;
+}
+
+/* 左右2カラム（左：エディタ／右：結果） */
+.code-workbench {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.code-workbench .course-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tmpl-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: #4b5b68;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.tmpl-label select {
+  min-height: 2.55rem;
+  min-width: 220px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  background: #fff;
+  color: #2c3e50;
+  font: inherit;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+/* コード入力欄（ダークエディタ） */
+#editor {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 360px;
+  resize: vertical;
+  padding: 1rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #172033;
+  color: #edf4f8;
+  font: 0.98rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  tab-size: 2;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+#editor:focus {
+  outline: none;
+  border-color: #4a6fa5;
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.2);
+}
+
+/* テンプレートの一言解説 */
+.code-explain {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.95rem;
+  background: #fff8e1;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  color: #4b3f1d;
+}
+
+/* 結果パネル */
+.result-panel .result-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+/* 文字出力（JS / Python） */
+.console-out {
+  flex: 1;
+  margin: 0;
+  padding: 1rem;
+  min-height: 420px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #0f1830;
+  color: #d7e6ef;
+  font: 0.98rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+
+.console-out .line-error { color: #ff9a8c; }
+.console-out .line-warn { color: #ffd479; }
+.console-out .line-muted { color: #8aa0b4; font-style: italic; }
+
+/* HTMLプレビュー */
+#htmlPreview {
+  flex: 1;
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+/* SQL結果 */
+.sql-result {
+  flex: 1;
+  min-height: 420px;
+  overflow: auto;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  padding: 0.5rem 0.8rem;
+  background: #fff;
+}
+
+.sql-result table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.sql-result .sql-meta {
+  margin: 0.2rem 0 0.6rem;
+  color: #4b5b68;
+  font-size: 0.9rem;
+}
+
+.sql-result .sql-error,
+.console-out .line-error.block {
+  color: #c0392b;
+}
+
+/* SQL結果・エラーの共通ボックス */
+.run-error {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  background: #fdecea;
+  border-left: 4px solid #e74c3c;
+  color: #922b21;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Excel VBA ガイド */
+.vba-result {
+  flex: 1;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.vba-result h3 {
+  margin: 0 0 0.4rem;
+  color: #166088;
+  font-size: 1rem;
+}
+
+.vba-output {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #f0f4f8;
+  color: #2c3e50;
+  font: 0.98rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.vba-steps {
+  margin: 0;
+  padding-left: 1.4rem;
+  font-size: 0.95rem;
+  color: #2c3e50;
+}
+
+.vba-steps li {
+  padding: 0.15rem 0;
+}
+
+.vba-note {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4b5b68;
+}
+
+/* SQLスキーマ表（折りたたみ） */
+.sql-schema {
+  margin-top: 1rem;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  background: #f8fbff;
+}
+
+.sql-schema summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #166088;
+  font-size: 0.95rem;
+}
+
+.sql-schema .schema-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+
+.sql-schema .schema-table {
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #fff;
+  padding: 0.6rem 0.8rem;
+}
+
+.sql-schema .schema-table h4 {
+  margin: 0 0 0.4rem;
+  color: #166088;
+  font-size: 0.92rem;
+}
+
+.sql-schema .schema-table ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.sql-schema .schema-table li {
+  padding: 0.12rem 0;
+  color: #2c3e50;
+}
+
+/* 言語の特徴と使用例（折りたたみ） */
+.lang-info {
+  margin: 0 0 1rem;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  background: #f8fbff;
+}
+
+.lang-info summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #166088;
+  font-size: 0.95rem;
+}
+
+.lang-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.lang-info-block h3 {
+  margin: 0 0 0.4rem;
+  color: #166088;
+  font-size: 0.95rem;
+}
+
+.lang-info-block ul {
+  margin: 0;
+  padding-left: 1.3rem;
+  font-size: 0.95rem;
+  color: #2c3e50;
+}
+
+.lang-info-block li {
+  padding: 0.12rem 0;
+}
+
+/* コードに出てくる言葉の解説 */
+.word-list {
+  margin-top: 0.9rem;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  padding: 0.7rem 0.95rem;
+  background: #f8fbff;
+}
+
+.word-list summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #166088;
+  font-size: 0.95rem;
+}
+
+.word-list dl {
+  margin: 0.6rem 0 0;
+}
+
+.word-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  padding: 0.3rem 0;
+  align-items: baseline;
+}
+
+.word-item dt code {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  background: #172033;
+  color: #edf4f8;
+  font-size: 0.92rem;
+}
+
+.word-item dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #2c3e50;
+}
+
+/* 状態ピル（実行中・エラー等） */
+.status-pill.is-busy { background: #fff3cd; color: #8a6d00; }
+.status-pill.is-error { background: #fdecea; color: #c0392b; }
+.status-pill.is-ok { background: #edf7f2; color: #216e4e; }
+
+@media (max-width: 980px) {
+  .code-workbench {
+    grid-template-columns: 1fr;
+  }
+  .lang-tabs .activity-tab {
+    flex: 1 1 45%;
+  }
+}

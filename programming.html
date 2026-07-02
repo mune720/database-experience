@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プログラミング体験 — 図書館情報技術論</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="course.css">
+<link rel="stylesheet" href="programming.css">
+</head>
+<body>
+<header>
+  <a class="home-link" href="index.html">トップへ戻る</a>
+  <h1>💻 プログラミング体験</h1>
+  <p class="subtitle">図書館情報技術論 ／ 左にコードを書くと、右に結果がすぐ表示されます</p>
+</header>
+
+<main class="course-main code-main">
+  <nav class="activity-tabs lang-tabs" aria-label="言語の切り替え">
+    <button class="activity-tab active" type="button" data-lang="js">JavaScript</button>
+    <button class="activity-tab" type="button" data-lang="python">Python</button>
+    <button class="activity-tab" type="button" data-lang="html">HTML / CSS</button>
+    <button class="activity-tab" type="button" data-lang="sql">SQL</button>
+    <button class="activity-tab" type="button" data-lang="vba">Excel VBA</button>
+  </nav>
+
+  <p id="langLead" class="code-lead"></p>
+
+  <details id="langInfo" class="lang-info">
+    <summary id="langInfoSummary">この言語について（特徴と使われている場所）</summary>
+    <div class="lang-info-grid">
+      <div class="lang-info-block">
+        <h3>特徴</h3>
+        <ul id="langFeatures"></ul>
+      </div>
+      <div class="lang-info-block">
+        <h3>使われている場所</h3>
+        <ul id="langUses"></ul>
+      </div>
+    </div>
+  </details>
+
+  <section class="code-workbench" aria-label="コード入力と結果">
+    <div class="course-panel code-editor-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="course-kicker" id="langKicker">JavaScript</p>
+          <h2>コードを書く</h2>
+        </div>
+        <label class="tmpl-label">テンプレート
+          <select id="templateSelect" aria-label="テンプレートを選ぶ"></select>
+        </label>
+      </div>
+
+      <div class="editor-toolbar">
+        <button id="runBtn" class="btn-primary" type="button">▶ 実行</button>
+        <button id="resetBtn" class="btn-secondary" type="button">お手本に戻す</button>
+        <button id="copyBtn" class="btn-secondary" type="button" hidden>コードをコピー</button>
+      </div>
+
+      <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="コード入力欄"></textarea>
+      <p id="codeExplain" class="code-explain"></p>
+
+      <details id="wordList" class="word-list" open hidden>
+        <summary>コードに出てくる言葉の意味</summary>
+        <dl id="wordItems"></dl>
+      </details>
+    </div>
+
+    <section class="course-panel result-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="course-kicker">Result</p>
+          <h2>結果</h2>
+        </div>
+        <span id="resultStatus" class="status-pill" aria-live="polite">準備OK</span>
+      </div>
+
+      <div class="result-body">
+        <pre id="consoleOut" class="console-out" hidden></pre>
+        <iframe id="htmlPreview" title="HTMLプレビュー" sandbox="allow-same-origin" hidden></iframe>
+        <div id="sqlResult" class="sql-result" hidden></div>
+        <div id="vbaResult" class="vba-result" hidden></div>
+      </div>
+
+      <details id="sqlSchema" class="sql-schema" hidden>
+        <summary>使えるテーブル（クリックで開く）</summary>
+        <div class="schema-grid">
+          <div class="schema-table">
+            <h4>authors（著者）</h4>
+            <ul><li>id 🔑</li><li>name 名前</li><li>birth 生年</li><li>death 没年</li></ul>
+          </div>
+          <div class="schema-table">
+            <h4>books（書籍）</h4>
+            <ul><li>id 🔑</li><li>title タイトル</li><li>author_id 🔗</li><li>publisher 出版社</li><li>year 出版年</li></ul>
+          </div>
+          <div class="schema-table">
+            <h4>holdings（所蔵）</h4>
+            <ul><li>id 🔑（図書ID）</li><li>book_id 🔗</li><li>location 配架場所</li></ul>
+          </div>
+          <div class="schema-table">
+            <h4>users（利用者）</h4>
+            <ul><li>student_no 🔑</li><li>category 区分</li><li>faculty 学部</li><li>name 氏名</li></ul>
+          </div>
+          <div class="schema-table">
+            <h4>loans（貸出）</h4>
+            <ul><li>id 🔑</li><li>holding_id 🔗</li><li>user_no 🔗</li><li>loan_date 貸出日</li></ul>
+          </div>
+        </div>
+      </details>
+    </section>
+  </section>
+</main>
+
+<footer>
+  <p class="footer-note">※ コードはこのブラウザの中だけで動きます。入力した内容は保存・送信されません。</p>
+  <p>図書館情報技術論</p>
+</footer>
+
+<script src="programming.js"></script>
+</body>
+</html>

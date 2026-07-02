@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ウェブサイトの仕組み — 図書館情報技術論</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="course.css">
+</head>
+<body class="website-page">
+<header>
+  <a class="home-link" href="index.html">トップへ戻る</a>
+  <h1>ウェブサイトの仕組み</h1>
+  <p class="subtitle">HTMLの構造とCSSによる見た目の変化を同時に確認する</p>
+</header>
+
+<main class="course-main website-main">
+  <nav class="activity-tabs website-mode-tabs" aria-label="機能の切り替え">
+    <button class="activity-tab active" type="button" data-website-tab="htmlLab">HTMLタグを試す</button>
+    <button class="activity-tab" type="button" data-website-tab="roleLab">HTML5・CSS・JSの役割</button>
+  </nav>
+
+  <section id="htmlLab" class="website-activity">
+  <section class="website-workbench" aria-label="HTML入力とプレビュー">
+    <div class="course-panel html-editor-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="course-kicker">HTML</p>
+          <h2>入力</h2>
+        </div>
+        <div class="editor-actions">
+          <select id="sampleSelect" aria-label="挿入するサンプル">
+            <option value="blank">空のページ</option>
+            <option value="minimal">最小構成</option>
+            <option value="homepage">ホームページ風</option>
+          </select>
+          <button id="insertSample" class="btn-secondary" type="button">サンプルを挿入</button>
+          <button id="resetPage" class="btn-danger" type="button">リセット</button>
+        </div>
+      </div>
+
+      <div class="tag-toolbar" aria-label="HTMLタグ挿入">
+        <button type="button" data-command="heading" title="見出しを挿入">H1</button>
+        <button type="button" data-command="bold" title="太字を挿入">B</button>
+        <button type="button" data-command="unorderedList" title="箇条書きを挿入" aria-label="箇条書きを挿入">
+          <span class="list-icon bullet-list" aria-hidden="true"><i></i><i></i><i></i></span>
+        </button>
+        <button type="button" data-command="orderedList" title="番号付きリストを挿入" aria-label="番号付きリストを挿入">
+          <span class="list-icon ordered-list" aria-hidden="true"><i>1</i><i>2</i><i>3</i></span>
+        </button>
+        <button type="button" data-command="lineBreak" title="改行を挿入">↵</button>
+      </div>
+
+      <div class="inline-tools" aria-label="属性付きタグ挿入">
+        <label>文字色
+          <span class="color-controls">
+            <select id="inlineColor" aria-label="挿入する文字色">
+              <option value="#263241">黒</option>
+              <option value="#c2410c">赤</option>
+              <option value="#166088" selected>青</option>
+              <option value="#216e4e">緑</option>
+              <option value="#8a5a00">オレンジ</option>
+            </select>
+            <button type="button" data-command="color" title="選択範囲に文字色を付ける">A</button>
+          </span>
+        </label>
+
+        <label>文字サイズ
+          <span class="size-controls">
+            <select id="inlineSize" aria-label="挿入する文字サイズ">
+              <option value="14">14px</option>
+              <option value="18" selected>18px</option>
+              <option value="24">24px</option>
+              <option value="32">32px</option>
+            </select>
+            <button type="button" data-command="size" title="選択範囲に文字サイズを付ける">A↕</button>
+          </span>
+        </label>
+      </div>
+
+      <textarea id="htmlInput" spellcheck="false" placeholder="ここにHTMLを書きます。"></textarea>
+    </div>
+
+    <section class="course-panel preview-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="course-kicker">Preview</p>
+          <h2>実際の表示</h2>
+        </div>
+      </div>
+      <iframe id="previewFrame" title="HTMLプレビュー" sandbox="allow-same-origin"></iframe>
+    </section>
+  </section>
+
+  <section class="website-lower-grid" aria-label="HTMLの分解とCSS設定">
+    <section class="course-panel structure-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="course-kicker">Structure</p>
+          <h2>タグの分解</h2>
+        </div>
+      </div>
+      <div id="tagBreakdown" class="tag-breakdown"></div>
+    </section>
+
+    <section class="course-panel css-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="course-kicker">CSS</p>
+          <h2>見た目のルール</h2>
+        </div>
+      </div>
+
+      <div class="css-presets" aria-label="CSSセット">
+        <button class="css-preset active" type="button" data-preset="plain" aria-pressed="true">
+          <span>基本</span>
+          <small>読みやすい標準表示</small>
+        </button>
+        <button class="css-preset" type="button" data-preset="card" aria-pressed="false">
+          <span>カード</span>
+          <small>余白と枠でまとまりを作る</small>
+        </button>
+        <button class="css-preset" type="button" data-preset="article" aria-pressed="false">
+          <span>記事</span>
+          <small>本文中心のレイアウト</small>
+        </button>
+      </div>
+
+      <div class="css-controls" aria-label="CSS数値設定">
+        <label>文字サイズ <span id="fontSizeValue">16px</span>
+          <input id="fontSizeControl" type="range" min="12" max="24" value="16">
+        </label>
+        <label>行間 <span id="lineHeightValue">1.6</span>
+          <input id="lineHeightControl" type="range" min="1.2" max="2.2" step="0.1" value="1.6">
+        </label>
+        <label>余白 <span id="spaceValue">24px</span>
+          <input id="spaceControl" type="range" min="0" max="56" value="24">
+        </label>
+        <label>角丸 <span id="radiusValue">8px</span>
+          <input id="radiusControl" type="range" min="0" max="28" value="8">
+        </label>
+        <label>枠線 <span id="borderValue">1px</span>
+          <input id="borderControl" type="range" min="0" max="6" value="1">
+        </label>
+      </div>
+
+      <pre id="cssReadout" class="css-readout" aria-label="現在のCSS"></pre>
+    </section>
+  </section>
+  </section>
+
+  <section id="roleLab" class="website-activity" hidden>
+    <div class="teacher-lab-grid">
+      <section class="course-panel teacher-preview-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="course-kicker">Teacher Demo</p>
+            <h2>HTML5・CSS・JavaScriptの役割</h2>
+          </div>
+        </div>
+
+        <div class="component-switches" aria-label="構成要素の切り替え">
+          <label class="component-switch locked">
+            <input type="checkbox" checked disabled>
+            <span>HTML5</span>
+            <small>構造</small>
+          </label>
+          <label class="component-switch">
+            <input id="teacherCssToggle" type="checkbox" checked>
+            <span>CSS</span>
+            <small>見た目</small>
+          </label>
+          <label class="component-switch">
+            <input id="teacherJsToggle" type="checkbox" checked>
+            <span>JavaScript</span>
+            <small>動き</small>
+          </label>
+        </div>
+
+        <iframe id="teacherFrame" title="HTML5 CSS JavaScript デモ" sandbox="allow-scripts allow-same-origin"></iframe>
+      </section>
+
+      <aside class="course-panel teacher-notes-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="course-kicker">Teaching Notes</p>
+            <h2>説明用メモ</h2>
+          </div>
+        </div>
+
+        <div class="role-cards">
+          <article class="role-card">
+            <h3>HTML5</h3>
+            <p>見出し、本文、フォーム、セクションなど、情報の構造を表します。</p>
+          </article>
+          <article class="role-card">
+            <h3>CSS</h3>
+            <p>色、余白、配置、強弱など、同じHTMLの見た目を変えます。</p>
+          </article>
+          <article class="role-card">
+            <h3>JavaScript</h3>
+            <p>ボタンを押したときの表示切替や、入力した文字をすぐ画面に反映する処理を担当します。</p>
+          </article>
+        </div>
+
+        <div class="teacher-state" id="teacherState"></div>
+
+        <h3 class="code-heading">サンプルHTML</h3>
+        <pre id="teacherHtmlCode" class="css-readout sample-code" aria-label="教員用サンプルHTML"></pre>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p class="footer-note">※ プレビューはブラウザ内で生成されます。入力したHTMLは保存されません。</p>
+  <p>図書館情報技術論</p>
+</footer>
+
+<script src="website.js"></script>
+</body>
+</html>

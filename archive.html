@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>デジタルアーカイブ作成 — 図書館情報技術論</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="course.css">
+<link rel="stylesheet" href="archive.css">
+</head>
+<body class="archive-page">
+<header>
+  <a class="home-link" href="index.html">トップへ戻る</a>
+  <h1>🗂️ デジタルアーカイブ作成</h1>
+</header>
+
+<main class="course-main archive-main">
+  <div id="notice" class="archive-notice" hidden></div>
+
+  <!-- ① 一覧ビュー -->
+  <section id="galleryView" class="archive-view">
+    <div class="archive-headrow">
+      <div class="headrow-title">
+        <h2>アーカイブ一覧</h2>
+        <a class="cross-search-link" href="archive-search.html">🔎 アーカイブ横断検索 →</a>
+      </div>
+      <button id="newArchiveBtn" class="btn-primary" type="button">＋ 新しいアーカイブを作る</button>
+    </div>
+    <div id="archiveGrid" class="archive-grid"></div>
+    <p id="galleryEmpty" class="empty-state" hidden>まだアーカイブがありません。「＋ 新しいアーカイブを作る」から始めましょう。</p>
+    <p id="galleryLoading" class="spinner-note" hidden>読み込み中…</p>
+  </section>
+
+  <!-- ② 作成ビュー -->
+  <section id="createView" class="archive-view" hidden>
+    <a href="#" class="back-link" data-back>← 一覧へ戻る</a>
+    <div class="card">
+      <h3>新しいアーカイブを作る</h3>
+      <form id="archiveForm" class="archive-form">
+        <label>自分の名前（作成者）　※本名でなくてもOK
+          <input type="text" name="owner_name" required maxlength="40" placeholder="例：図書 花子">
+        </label>
+        <label>テーマ（デジタルアーカイブのタイトル）
+          <input type="text" name="title" required maxlength="60" placeholder="例：まちの看板アーカイブ">
+        </label>
+        <label>説明（任意）
+          <textarea name="description" rows="3" maxlength="300" placeholder="どんなテーマで、何を集めたアーカイブかを書きましょう"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" data-back>キャンセル</button>
+          <button type="submit" class="btn-primary">作成して資料を追加する</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ③ 詳細ビュー -->
+  <section id="detailView" class="archive-view" hidden>
+    <a href="#" class="back-link" data-back>← 一覧へ戻る</a>
+    <div class="archive-detail-head">
+      <h2 id="detailTitle"></h2>
+      <p id="detailMeta" class="archive-detail-meta"></p>
+      <p id="detailDesc" class="archive-detail-desc"></p>
+      <div class="archive-detail-actions" id="archivePermalink"></div>
+      <div class="modal-actions" id="detailOwnerActions" hidden style="justify-content:flex-start;">
+        <button id="addItemBtn" class="btn-primary" type="button">＋ 資料を追加</button>
+        <button id="deleteArchiveBtn" class="btn-danger" type="button">このアーカイブを削除</button>
+      </div>
+    </div>
+
+    <div class="archive-toolbar">
+      <input type="search" id="itemSearch" placeholder="このアーカイブ内を検索（タイトル・説明・主題・場所など）">
+      <div id="subjectFilters" class="subject-filters"></div>
+    </div>
+
+    <div id="itemGrid" class="item-grid"></div>
+    <p id="detailEmpty" class="empty-state" hidden>まだ資料がありません。</p>
+  </section>
+</main>
+
+<!-- 資料追加モーダル -->
+<div id="addItemModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addItemTitle">
+    <div class="modal-head">
+      <h3 id="addItemTitle">資料とメタデータを追加</h3>
+      <button class="modal-close" type="button" data-close-add aria-label="閉じる">×</button>
+    </div>
+    <form id="itemForm" class="archive-form">
+      <div class="uploader">
+        <label class="uploader-btn" for="itemImage">📎 資料を選ぶ・撮影する</label>
+        <input type="file" id="itemImage" name="image" accept="image/*,video/*,audio/*,text/*,.txt,.md,.csv,.json,.rtf,.log">
+        <p class="uploader-hint">写真・動画・音声・テキストに対応。スマホからもアップできます。</p>
+        <div id="itemPreview" class="upload-preview" hidden></div>
+      </div>
+
+      <label>タイトル <span class="field-hint">dc:title（必須）</span>
+        <input type="text" name="dc_title" required maxlength="120" placeholder="例：昭和レトロな喫茶店の看板">
+      </label>
+      <label>作成者・撮影者 <span class="field-hint">dc:creator</span>
+        <input type="text" name="dc_creator" maxlength="60" placeholder="例：図書 花子">
+      </label>
+      <label>日付 <span class="field-hint">dc:date</span>
+        <input type="text" name="dc_date" maxlength="40" placeholder="例：2026-06-03 / 2026年春ごろ">
+      </label>
+      <label>説明 <span class="field-hint">dc:description</span>
+        <textarea name="dc_description" rows="3" maxlength="600" placeholder="何を写したものか、気づいたことなど"></textarea>
+      </label>
+      <label>主題・キーワード <span class="field-hint">dc:subject ／ カンマ・読点・空白で区切る</span>
+        <input type="text" name="dc_subject" maxlength="200" placeholder="例：看板, 商店街, レトロ">
+      </label>
+      <label>場所・範囲 <span class="field-hint">dc:coverage</span>
+        <input type="text" name="dc_coverage" maxlength="120" placeholder="例：東京都・〇〇商店街">
+      </label>
+      <label>資源タイプ <span class="field-hint">dc:type</span>
+        <select name="dc_type">
+          <option value="静止画（写真）">静止画（写真）</option>
+          <option value="動画（映像）">動画（映像）</option>
+          <option value="音声">音声</option>
+          <option value="テキスト（文書）">テキスト（文書）</option>
+          <option value="地図">地図</option>
+          <option value="立体物">立体物</option>
+          <option value="その他">その他</option>
+        </select>
+      </label>
+      <label>権利 <span class="field-hint">dc:rights</span>
+        <input type="text" name="dc_rights" maxlength="120" placeholder="例：撮影者本人 / CC BY 4.0">
+      </label>
+
+      <div>
+        <label style="margin-bottom:0.4rem;">自由項目 <span class="field-hint">独自の項目を追加可能</span></label>
+        <div id="customFields" class="custom-fields"></div>
+        <button type="button" id="addCustomField" class="btn-secondary" style="margin-top:0.5rem;">＋ 項目を追加</button>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-add>キャンセル</button>
+        <button type="submit" class="btn-primary" id="itemSubmitBtn">この資料を登録</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 資料詳細モーダル -->
+<div id="itemModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
+    <div class="modal-head">
+      <h3 id="itemModalTitle">資料の詳細</h3>
+      <button class="modal-close" type="button" data-close-item aria-label="閉じる">×</button>
+    </div>
+    <div id="itemModalBody"></div>
+    <div class="modal-actions" id="itemModalActions"></div>
+  </div>
+</div>
+
+<footer>
+  <p class="footer-note">※ このアーカイブは全員で共有されます。</p>
+  <p>図書館情報技術論</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="archive-config.js"></script>
+<script src="archive.js"></script>
+</body>
+</html>
