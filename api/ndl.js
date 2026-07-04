@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
           title: pick(item, 'title'),
           author: pick(item, 'author') || pick(item, 'dc:creator'),
           publisher: pick(item, 'dc:publisher'),
-          year: (pick(item, 'dcterms:issued') || pick(item, 'pubDate')).slice(0, 10),
+          year: ((pick(item, 'dcterms:issued') || pick(item, 'dc:date') || pick(item, 'pubDate')).match(/\d{4}/) || [''])[0],
           link: pick(item, 'guid') || pick(item, 'link'),
         };
       });
