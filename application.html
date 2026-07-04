@@ -12,7 +12,7 @@
 @media (max-width: 900px) { .app-grid { grid-template-columns: 1fr; } }
 
 /* OPAC画面（フロントエンド） */
-.opac-box { border: 2px solid #2f6fb0; border-radius: 10px; overflow: hidden; background: #fff; }
+.opac-box { border: 1px solid #b9c6d4; border-radius: 8px; overflow: hidden; background: #fff; }
 .opac-head { background: #2f6fb0; color: #fff; padding: 8px 14px; font-weight: 700; }
 .opac-body { padding: 14px; }
 .opac-search { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -20,7 +20,7 @@
 .opac-search button { padding: 8px 18px; border: none; border-radius: 6px; background: #2f6fb0; color: #fff; font-weight: 700; cursor: pointer; }
 .opac-search button:disabled { background: #9bb3c9; cursor: default; }
 .opac-hint { font-size: 12.5px; color: #667; margin-bottom: 10px; }
-.opac-hint button { border: 1px solid #bcd; background: #f2f7fc; border-radius: 999px; padding: 2px 10px; margin: 0 3px; cursor: pointer; font-size: 12px; }
+.opac-hint button { border: 1px solid #c3cfdb; background: #f5f8fb; border-radius: 5px; padding: 2px 10px; margin: 0 3px; cursor: pointer; font-size: 12px; }
 .opac-results { min-height: 120px; }
 .opac-results .waiting { color: #889; font-size: 13.5px; }
 .result-item { border: 1px solid #dde4ec; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
@@ -31,10 +31,10 @@
 
 /* 舞台裏 */
 .stage-nodes { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
-.stage-node { flex: 1; border: 2px solid #ccd3dc; border-radius: 10px; padding: 10px 8px; text-align: center; background: #fafbfd; transition: all .25s; }
+.stage-node { flex: 1; border: 1px solid #ccd3dc; border-radius: 8px; padding: 10px 8px; text-align: center; background: #fafbfd; transition: all .25s; }
 .stage-node .nm { font-weight: 700; font-size: 14px; }
 .stage-node .sub { font-size: 11.5px; color: #667; }
-.stage-node.active { border-color: #e0a300; background: #fff6dd; box-shadow: 0 0 0 3px #ffe9a8; }
+.stage-node.active { border-color: #2f6fb0; background: #eef4fc; box-shadow: 0 0 0 1px #2f6fb0; }
 .stage-arrow { font-size: 20px; color: #99a; font-weight: 700; }
 .comm-log { border: 1px solid #dde4ec; border-radius: 8px; background: #fff; min-height: 200px; padding: 10px 12px; }
 .comm-log h3 { font-size: 13.5px; color: #556; margin: 0 0 8px; }
@@ -45,14 +45,14 @@
 .speed-row { font-size: 13px; color: #556; margin-bottom: 10px; }
 
 /* API */
-.api-step { border: 1px solid #dde4ec; border-radius: 10px; background: #fff; padding: 14px 16px; margin-bottom: 14px; }
+.api-step { border: 1px solid #dde4ec; border-radius: 8px; background: #fff; padding: 14px 16px; margin-bottom: 14px; }
 .api-step h3 { margin: 0 0 8px; font-size: 15.5px; }
 .api-step h3 .stepno { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: #2f6fb0; color: #fff; font-size: 13px; align-items: center; justify-content: center; margin-right: 8px; }
 .api-btn { padding: 8px 18px; border: none; border-radius: 6px; background: #2f6fb0; color: #fff; font-weight: 700; cursor: pointer; }
 .api-btn.gray { background: #8b95a3; }
-.keybox { font-family: ui-monospace, Menlo, monospace; background: #f4f6f9; border: 1px dashed #9ab; border-radius: 6px; padding: 6px 12px; display: inline-block; margin-left: 10px; font-size: 14px; }
+.keybox { font-family: ui-monospace, Menlo, monospace; background: #f4f6f9; border: 1px solid #c3cfdb; border-radius: 6px; padding: 6px 12px; display: inline-block; margin-left: 10px; font-size: 14px; }
 .urlbox { font-family: ui-monospace, Menlo, monospace; background: #f4f6f9; border: 1px solid #e2e7ee; border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-top: 8px; word-break: break-all; }
-.urlbox .pk { color: #b3452f; font-weight: 700; }
+.urlbox .pk { color: #2f6fb0; font-weight: 700; }
 .jsonbox { font-family: ui-monospace, Menlo, monospace; background: #182230; color: #cfe3ff; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; margin-top: 10px; min-height: 90px; }
 .jsonbox.err { color: #ff9d8a; }
 .jsonbox.ok { color: #9ae69a; }
@@ -67,7 +67,7 @@ input.api-input { padding: 6px 10px; border: 1px solid #aab; border-radius: 6px;
 .quiz-score { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
 .quiz-row { display: flex; align-items: center; gap: 10px; border: 1px solid #dde4ec; border-radius: 8px; background: #fff; padding: 10px 14px; margin-bottom: 8px; flex-wrap: wrap; }
 .quiz-row .q { flex: 1; min-width: 180px; font-size: 14.5px; }
-.quiz-row button { padding: 6px 14px; border: 1px solid #bcd; border-radius: 999px; background: #f2f7fc; cursor: pointer; font-size: 13px; }
+.quiz-row button { padding: 6px 14px; border: 1px solid #c3cfdb; border-radius: 5px; background: #f5f8fb; cursor: pointer; font-size: 13px; }
 .quiz-row button:disabled { cursor: default; opacity: .55; }
 .quiz-row button.correct { background: #1d7a3a; color: #fff; border-color: #1d7a3a; opacity: 1; }
 .quiz-row button.wrong { background: #b3452f; color: #fff; border-color: #b3452f; opacity: 1; }
@@ -77,15 +77,15 @@ input.api-input { padding: 6px 10px; border: 1px solid #aab; border-radius: 6px;
 <body>
 <header>
   <a class="home-link" href="index.html">トップへ戻る</a>
-  <h1>📱 アプリケーションの仕組み</h1>
+  <h1>アプリケーションの仕組み</h1>
   <p class="subtitle">図書館情報技術論 ／ アプリの「見える部分」と「見えない部分」を体験します</p>
 </header>
 
 <main class="course-main">
   <nav class="activity-tabs mode-tabs" aria-label="体験の切り替え">
-    <button class="activity-tab active" type="button" data-mode="opac">🔍 OPAC検索の舞台裏</button>
-    <button class="activity-tab" type="button" data-mode="api">🔑 APIを使ってみる</button>
-    <button class="activity-tab" type="button" data-mode="quiz">🧩 3つの層 仕分けクイズ</button>
+    <button class="activity-tab active" type="button" data-mode="opac">OPAC検索の舞台裏</button>
+    <button class="activity-tab" type="button" data-mode="api">APIを使ってみる</button>
+    <button class="activity-tab" type="button" data-mode="quiz">3つの層 仕分けクイズ</button>
   </nav>
 
   <!-- ========== 1. OPAC ========== -->
@@ -149,7 +149,7 @@ input.api-input { padding: 6px 10px; border: 1px solid #aab; border-radius: 6px;
         <input id="ndlTitle" class="api-input" type="text" value="こころ">
       </label>
       <div class="urlbox"><span id="urlOrigin"></span><span>/api/ndl?appkey=</span><span class="pk" id="urlKey">（未発行）</span><span>&amp;title=</span><span id="urlTitle"></span></div>
-      <p class="api-note">この演習サイトの窓口（<strong>/api/ndl</strong>）が<span style="color:#b3452f; font-weight:700;">APIキーを確認してから</span>、国立国会図書館サーチに問い合わせて結果を返します。キーなしだとどうなるかも試してみましょう。</p>
+      <p class="api-note">この演習サイトの窓口（<strong>/api/ndl</strong>）が<strong>APIキーを確認してから</strong>、国立国会図書館サーチに問い合わせて結果を返します。キーなしだとどうなるかも試してみましょう。</p>
       <p style="margin-top:10px;">
         <button id="sendBtn" class="api-btn" type="button">キーを付けて送信</button>
         <button id="sendNoKeyBtn" class="api-btn gray" type="button">キーなしで送信（実験）</button>
