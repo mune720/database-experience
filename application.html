@@ -53,11 +53,15 @@
 .keybox { font-family: ui-monospace, Menlo, monospace; background: #f4f6f9; border: 1px dashed #9ab; border-radius: 6px; padding: 6px 12px; display: inline-block; margin-left: 10px; font-size: 14px; }
 .urlbox { font-family: ui-monospace, Menlo, monospace; background: #f4f6f9; border: 1px solid #e2e7ee; border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-top: 8px; word-break: break-all; }
 .urlbox .pk { color: #b3452f; font-weight: 700; }
-.jsonbox { font-family: ui-monospace, Menlo, monospace; background: #182230; color: #cfe3ff; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.7; white-space: pre; margin-top: 10px; min-height: 90px; }
+.jsonbox { font-family: ui-monospace, Menlo, monospace; background: #182230; color: #cfe3ff; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; margin-top: 10px; min-height: 90px; }
 .jsonbox.err { color: #ff9d8a; }
 .jsonbox.ok { color: #9ae69a; }
 .api-note { font-size: 13px; color: #556; margin-top: 6px; }
 select.api-select { padding: 6px 10px; border: 1px solid #aab; border-radius: 6px; font-size: 14px; }
+input.api-input { padding: 6px 10px; border: 1px solid #aab; border-radius: 6px; font-size: 14px; width: 240px; }
+.ob-result { display: flex; gap: 14px; align-items: flex-start; margin-top: 10px; }
+.ob-result img { width: 110px; border: 1px solid #ddd; border-radius: 6px; flex: none; }
+.ob-result .jsonbox { flex: 1; margin-top: 0; }
 
 /* クイズ */
 .quiz-score { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
@@ -130,7 +134,7 @@ select.api-select { padding: 6px 10px; border: 1px solid #aab; border-radius: 6p
 
   <!-- ========== 2. API ========== -->
   <div id="modeApi" class="mode-section" hidden>
-    <p class="app-lead">APIは、アプリの機能やデータを<strong>他のプログラムからも使えるようにする窓口</strong>です。多くのAPIは、利用者を確認するための<strong>APIキー（鍵）</strong>がないと使えません。ここでは、図書館の蔵書検索APIを模した体験ができます。</p>
+    <p class="app-lead">APIは、アプリの機能やデータを<strong>他のプログラムからも使えるようにする窓口</strong>です。このタブでは<strong>実際の外部API</strong>と通信します。「APIキーが必要な窓口」（手順1〜2）と「キー不要の窓口」（手順3）の両方を試してみましょう。</p>
 
     <div class="api-step">
       <h3><span class="stepno">1</span>APIキーを発行する</h3>
@@ -140,27 +144,32 @@ select.api-select { padding: 6px 10px; border: 1px solid #aab; border-radius: 6p
     </div>
 
     <div class="api-step">
-      <h3><span class="stepno">2</span>リクエストを組み立てて送る</h3>
-      <label>調べたい本：
-        <select id="apiTitle" class="api-select">
-          <option>こころ</option>
-          <option>銀河鉄道の夜</option>
-          <option>坊っちゃん</option>
-          <option>羅生門</option>
-        </select>
+      <h3><span class="stepno">2</span>国立国会図書館の本を検索する（キーが必要な窓口）</h3>
+      <label>書名で検索：
+        <input id="ndlTitle" class="api-input" type="text" value="こころ">
       </label>
-      <div class="urlbox"><span>https://api.tosho-demo.jp/check?appkey=</span><span class="pk" id="urlKey">（未発行）</span><span>&amp;title=</span><span id="urlTitle"></span></div>
-      <p class="api-note">URLの「?」以降に、<span style="color:#b3452f; font-weight:700;">appkey（APIキー）</span>と「調べたい本」の情報を付けて送ります。</p>
+      <div class="urlbox"><span id="urlOrigin"></span><span>/api/ndl?appkey=</span><span class="pk" id="urlKey">（未発行）</span><span>&amp;title=</span><span id="urlTitle"></span></div>
+      <p class="api-note">この演習サイトの窓口（<strong>/api/ndl</strong>）が<span style="color:#b3452f; font-weight:700;">APIキーを確認してから</span>、国立国会図書館サーチに問い合わせて結果を返します。キーなしだとどうなるかも試してみましょう。</p>
       <p style="margin-top:10px;">
         <button id="sendBtn" class="api-btn" type="button">キーを付けて送信</button>
         <button id="sendNoKeyBtn" class="api-btn gray" type="button">キーなしで送信（実験）</button>
       </p>
+      <div id="jsonBox" class="jsonbox">（まだ送信していません）</div>
+      <p class="api-note">返ってくるのは、国立国会図書館サーチの<strong>実物の書誌データ</strong>（JSON形式）です。※国会図書館のAPI自体はキー不要で公開されています。この演習では「キーを確認する窓口」を間に置いています。</p>
     </div>
 
     <div class="api-step">
-      <h3><span class="stepno">3</span>レスポンス（返ってくるデータ）</h3>
-      <div id="jsonBox" class="jsonbox">（まだ送信していません）</div>
-      <p class="api-note">データは <strong>JSON（ジェイソン）</strong>という形式で返ってきます。人間向けの画面ではなく「プログラムが読みやすい形」なのがポイントです。カーリルの蔵書検索APIも、この仕組みで動いています。</p>
+      <h3><span class="stepno">3</span>キー不要のAPIもある ── openBDで本の情報を調べる</h3>
+      <label>ISBN（本の裏表紙にある13桁の番号）：
+        <input id="obIsbn" class="api-input" type="text" value="9784101010137">
+      </label>
+      <div class="urlbox"><span>https://api.openbd.jp/v1/get?isbn=</span><span class="pk" id="urlIsbn"></span></div>
+      <p style="margin-top:10px;"><button id="obSendBtn" class="api-btn" type="button">送信</button></p>
+      <div class="ob-result">
+        <img id="obCover" alt="表紙画像" hidden>
+        <div id="obJson" class="jsonbox">（まだ送信していません）</div>
+      </div>
+      <p class="api-note"><strong>openBD</strong> は本の情報と表紙画像を提供するキー不要のAPIで、ブラウザから直接呼び出せます。手元にある本のISBNを入力して試してみましょう。</p>
     </div>
   </div>
 
@@ -173,7 +182,7 @@ select.api-select { padding: 6px 10px; border: 1px solid #aab; border-radius: 6p
 </main>
 
 <footer>
-  <p class="footer-note">※ この体験はすべてブラウザ内で動いています（実際のサーバーとは通信していません）。</p>
+  <p class="footer-note">※ 「OPAC検索の舞台裏」と「仕分けクイズ」はブラウザ内で完結します。「APIを使ってみる」は、実際に外部のAPI（国立国会図書館サーチ・openBD）と通信します。</p>
 </footer>
 
 <script>
@@ -192,6 +201,12 @@ document.querySelectorAll('.mode-tabs .activity-tab').forEach(btn => {
     Object.entries(sections).forEach(([k, el]) => { el.hidden = (k !== btn.dataset.mode); });
   });
 });
+// URLの #api / #quiz で最初に開くタブを指定できる
+const initialTab = location.hash.replace('#', '');
+if (sections[initialTab]) {
+  const btn = document.querySelector('.mode-tabs .activity-tab[data-mode="' + initialTab + '"]');
+  if (btn) btn.click();
+}
 
 // ---------- 小さなDOMヘルパー（innerHTML不使用） ----------
 function el(tag, className, text) {
@@ -291,47 +306,83 @@ document.querySelectorAll('.try').forEach(b => b.addEventListener('click', () =>
   runSearch(b.dataset.q);
 }));
 
-// ---------- 2. API ----------
+// ---------- 2. API（実際の外部APIと通信） ----------
 let apiKey = null;
-const API_DATA = {
-  'こころ': { isbn: '9784101010137', 蔵書: 'あり', 貸出: '可能', 所蔵館: '中央図書館' },
-  '銀河鉄道の夜': { isbn: '9784101092058', 蔵書: 'あり', 貸出: '貸出中', 所蔵館: '中央図書館' },
-  '坊っちゃん': { isbn: '9784101010021', 蔵書: 'あり', 貸出: '可能', 所蔵館: '駅前分館' },
-  '羅生門': { isbn: '9784101025018', 蔵書: 'なし', 貸出: '－', 所蔵館: '－' },
-};
 const keyBox = document.getElementById('keyBox');
 const urlKey = document.getElementById('urlKey');
 const urlTitle = document.getElementById('urlTitle');
-const apiTitle = document.getElementById('apiTitle');
+const urlOrigin = document.getElementById('urlOrigin');
+const ndlTitle = document.getElementById('ndlTitle');
 const jsonBox = document.getElementById('jsonBox');
+const obIsbn = document.getElementById('obIsbn');
+const urlIsbn = document.getElementById('urlIsbn');
+const obJson = document.getElementById('obJson');
+const obCover = document.getElementById('obCover');
+
+urlOrigin.textContent = location.origin.startsWith('http') ? location.origin : 'https://database-experience.vercel.app';
 
 function updateUrl() {
   urlKey.textContent = apiKey ? apiKey : '（未発行）';
-  urlTitle.textContent = encodeURIComponent(apiTitle.value);
+  urlTitle.textContent = encodeURIComponent(ndlTitle.value.trim());
 }
 document.getElementById('issueKeyBtn').addEventListener('click', () => {
   apiKey = 'demo-' + Math.random().toString(16).slice(2, 10);
   keyBox.textContent = apiKey;
   updateUrl();
 });
-apiTitle.addEventListener('change', updateUrl);
-function showJson(obj, isErr) {
-  jsonBox.textContent = JSON.stringify(obj, null, 2);
-  jsonBox.classList.toggle('err', isErr);
-  jsonBox.classList.toggle('ok', !isErr);
+ndlTitle.addEventListener('input', updateUrl);
+
+function showJson(box, obj, isErr) {
+  box.textContent = JSON.stringify(obj, null, 2);
+  box.classList.toggle('err', isErr);
+  box.classList.toggle('ok', !isErr);
 }
-document.getElementById('sendBtn').addEventListener('click', () => {
-  if (!apiKey) {
-    showJson({ status: 401, error: 'APIキーが指定されていません。まず手順1でキーを発行してください。' }, true);
-    return;
+async function callNdl(withKey) {
+  const t = ndlTitle.value.trim();
+  if (!t) { alert('書名を入力してください'); return; }
+  jsonBox.classList.remove('err', 'ok');
+  jsonBox.textContent = '国立国会図書館サーチに問い合わせ中…';
+  const key = (withKey && apiKey) ? apiKey : '';
+  try {
+    const r = await fetch('/api/ndl?appkey=' + encodeURIComponent(key) + '&title=' + encodeURIComponent(t));
+    const j = await r.json();
+    showJson(jsonBox, j, !r.ok);
+  } catch (e) {
+    showJson(jsonBox, { status: '通信エラー', error: '外部APIに接続できませんでした。ネットワークの制限や混雑の可能性があります。' }, true);
   }
-  const d = API_DATA[apiTitle.value];
-  showJson({ status: 200, title: apiTitle.value, isbn: d.isbn, 蔵書: d.蔵書, 貸出: d.貸出, 所蔵館: d.所蔵館 }, false);
-});
-document.getElementById('sendNoKeyBtn').addEventListener('click', () => {
-  showJson({ status: 401, error: '不正なリクエストです（APIキーがありません）' }, true);
+}
+document.getElementById('sendBtn').addEventListener('click', () => callNdl(true));
+document.getElementById('sendNoKeyBtn').addEventListener('click', () => callNdl(false));
+
+function updateIsbn() {
+  urlIsbn.textContent = obIsbn.value.replace(/[-\s]/g, '');
+}
+obIsbn.addEventListener('input', updateIsbn);
+document.getElementById('obSendBtn').addEventListener('click', async () => {
+  const isbn = obIsbn.value.replace(/[-\s]/g, '');
+  if (!/^[0-9]{10,13}$/.test(isbn)) { alert('ISBNは10〜13桁の数字で入力してください（ハイフンはあってもOK）'); return; }
+  obJson.classList.remove('err', 'ok');
+  obJson.textContent = 'openBD に問い合わせ中…';
+  obCover.hidden = true;
+  try {
+    const r = await fetch('https://api.openbd.jp/v1/get?isbn=' + encodeURIComponent(isbn));
+    const arr = await r.json();
+    if (!arr || !arr[0] || !arr[0].summary) {
+      showJson(obJson, { status: 200, isbn: isbn, 結果: '該当するデータが見つかりませんでした（openBDに未収録のISBNの可能性があります）' }, true);
+      return;
+    }
+    const s = arr[0].summary;
+    showJson(obJson, s, false);
+    if (typeof s.cover === 'string' && s.cover.startsWith('https://cover.openbd.jp/')) {
+      obCover.src = s.cover;
+      obCover.hidden = false;
+    }
+  } catch (e) {
+    showJson(obJson, { status: '通信エラー', error: '外部APIに接続できませんでした。ネットワークの制限や混雑の可能性があります。' }, true);
+  }
 });
 updateUrl();
+updateIsbn();
 
 // ---------- 3. クイズ ----------
 const QUIZ = [
