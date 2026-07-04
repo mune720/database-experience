@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アプリケーションの仕組み — 図書館情報技術論</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="course.css">
+<style>
+.app-lead { margin: 0 0 16px; color: #445; }
+.app-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .app-grid { grid-template-columns: 1fr; } }
+
+/* OPAC画面（フロントエンド） */
+.opac-box { border: 2px solid #2f6fb0; border-radius: 10px; overflow: hidden; background: #fff; }
+.opac-head { background: #2f6fb0; color: #fff; padding: 8px 14px; font-weight: 700; }
+.opac-body { padding: 14px; }
+.opac-search { display: flex; gap: 8px; margin-bottom: 12px; }
+.opac-search input { flex: 1; padding: 8px 10px; border: 1px solid #aab; border-radius: 6px; font-size: 15px; }
+.opac-search button { padding: 8px 18px; border: none; border-radius: 6px; background: #2f6fb0; color: #fff; font-weight: 700; cursor: pointer; }
+.opac-search button:disabled { background: #9bb3c9; cursor: default; }
+.opac-hint { font-size: 12.5px; color: #667; margin-bottom: 10px; }
+.opac-hint button { border: 1px solid #bcd; background: #f2f7fc; border-radius: 999px; padding: 2px 10px; margin: 0 3px; cursor: pointer; font-size: 12px; }
+.opac-results { min-height: 120px; }
+.opac-results .waiting { color: #889; font-size: 13.5px; }
+.result-item { border: 1px solid #dde4ec; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
+.result-item .ttl { font-weight: 700; }
+.result-item .meta { font-size: 12.5px; color: #556; }
+.status-ok { color: #1d7a3a; font-weight: 700; }
+.status-out { color: #b3452f; font-weight: 700; }
+
+/* 舞台裏 */
+.stage-nodes { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+.stage-node { flex: 1; border: 2px solid #ccd3dc; border-radius: 10px; padding: 10px 8px; text-align: center; background: #fafbfd; transition: all .25s; }
+.stage-node .nm { font-weight: 700; font-size: 14px; }
+.stage-node .sub { font-size: 11.5px; color: #667; }
+.stage-node.active { border-color: #e0a300; background: #fff6dd; box-shadow: 0 0 0 3px #ffe9a8; }
+.stage-arrow { font-size: 20px; color: #99a; font-weight: 700; }
+.comm-log { border: 1px solid #dde4ec; border-radius: 8px; background: #fff; min-height: 200px; padding: 10px 12px; }
+.comm-log h3 { font-size: 13.5px; color: #556; margin: 0 0 8px; }
+.log-entry { display: flex; gap: 8px; margin-bottom: 7px; font-size: 13.5px; opacity: 0; transform: translateY(4px); transition: all .3s; }
+.log-entry.show { opacity: 1; transform: none; }
+.log-entry .no { flex: none; width: 20px; height: 20px; border-radius: 50%; background: #2f6fb0; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.log-entry .code { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: #f4f6f9; border: 1px solid #e2e7ee; border-radius: 5px; padding: 3px 8px; margin-top: 3px; color: #234; }
+.speed-row { font-size: 13px; color: #556; margin-bottom: 10px; }
+
+/* API */
+.api-step { border: 1px solid #dde4ec; border-radius: 10px; background: #fff; padding: 14px 16px; margin-bottom: 14px; }
+.api-step h3 { margin: 0 0 8px; font-size: 15.5px; }
+.api-step h3 .stepno { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: #2f6fb0; color: #fff; font-size: 13px; align-items: center; justify-content: center; margin-right: 8px; }
+.api-btn { padding: 8px 18px; border: none; border-radius: 6px; background: #2f6fb0; color: #fff; font-weight: 700; cursor: pointer; }
+.api-btn.gray { background: #8b95a3; }
+.keybox { font-family: ui-monospace, Menlo, monospace; background: #f4f6f9; border: 1px dashed #9ab; border-radius: 6px; padding: 6px 12px; display: inline-block; margin-left: 10px; font-size: 14px; }
+.urlbox { font-family: ui-monospace, Menlo, monospace; background: #f4f6f9; border: 1px solid #e2e7ee; border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-top: 8px; word-break: break-all; }
+.urlbox .pk { color: #b3452f; font-weight: 700; }
+.jsonbox { font-family: ui-monospace, Menlo, monospace; background: #182230; color: #cfe3ff; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.7; white-space: pre; margin-top: 10px; min-height: 90px; }
+.jsonbox.err { color: #ff9d8a; }
+.jsonbox.ok { color: #9ae69a; }
+.api-note { font-size: 13px; color: #556; margin-top: 6px; }
+select.api-select { padding: 6px 10px; border: 1px solid #aab; border-radius: 6px; font-size: 14px; }
+
+/* クイズ */
+.quiz-score { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.quiz-row { display: flex; align-items: center; gap: 10px; border: 1px solid #dde4ec; border-radius: 8px; background: #fff; padding: 10px 14px; margin-bottom: 8px; flex-wrap: wrap; }
+.quiz-row .q { flex: 1; min-width: 180px; font-size: 14.5px; }
+.quiz-row button { padding: 6px 14px; border: 1px solid #bcd; border-radius: 999px; background: #f2f7fc; cursor: pointer; font-size: 13px; }
+.quiz-row button:disabled { cursor: default; opacity: .55; }
+.quiz-row button.correct { background: #1d7a3a; color: #fff; border-color: #1d7a3a; opacity: 1; }
+.quiz-row button.wrong { background: #b3452f; color: #fff; border-color: #b3452f; opacity: 1; }
+.quiz-row .mark { font-size: 16px; font-weight: 700; width: 24px; }
+</style>
+</head>
+<body>
+<header>
+  <a class="home-link" href="index.html">トップへ戻る</a>
+  <h1>📱 アプリケーションの仕組み</h1>
+  <p class="subtitle">図書館情報技術論 ／ アプリの「見える部分」と「見えない部分」を体験します</p>
+</header>
+
+<main class="course-main">
+  <nav class="activity-tabs mode-tabs" aria-label="体験の切り替え">
+    <button class="activity-tab active" type="button" data-mode="opac">🔍 OPAC検索の舞台裏</button>
+    <button class="activity-tab" type="button" data-mode="api">🔑 APIを使ってみる</button>
+    <button class="activity-tab" type="button" data-mode="quiz">🧩 3つの層 仕分けクイズ</button>
+  </nav>
+
+  <!-- ========== 1. OPAC ========== -->
+  <div id="modeOpac" class="mode-section">
+    <p class="app-lead">OPACで本を検索したとき、画面の裏側で何が起きているかを見てみましょう。左のOPACで検索すると、右に「舞台裏」の動きが順番に表示されます。</p>
+    <div class="app-grid">
+      <div>
+        <div class="opac-box">
+          <div class="opac-head">蔵書検索 OPAC（利用者が見る画面）</div>
+          <div class="opac-body">
+            <div class="opac-search">
+              <input id="opacQuery" type="text" placeholder="書名・著者名を入力" value="夏目漱石">
+              <button id="opacBtn" type="button">検索</button>
+            </div>
+            <div class="opac-hint">試してみる：
+              <button type="button" class="try" data-q="夏目漱石">夏目漱石</button>
+              <button type="button" class="try" data-q="こころ">こころ</button>
+              <button type="button" class="try" data-q="銀河">銀河</button>
+              <button type="button" class="try" data-q="レモン">レモン</button>
+            </div>
+            <div id="opacResults" class="opac-results"><p class="waiting">ここに検索結果が表示されます。</p></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="speed-row">舞台裏のスピード：
+          <select id="speedSel" class="api-select">
+            <option value="1300">ゆっくり</option>
+            <option value="750" selected>ふつう</option>
+          </select>
+        </div>
+        <div class="stage-nodes">
+          <div class="stage-node" id="nodeFront"><div class="nm">フロントエンド</div><div class="sub">ブラウザ（見える）</div></div>
+          <div class="stage-arrow">⇄</div>
+          <div class="stage-node" id="nodeBack"><div class="nm">バックエンド</div><div class="sub">Webサーバー（見えない）</div></div>
+          <div class="stage-arrow">⇄</div>
+          <div class="stage-node" id="nodeDb"><div class="nm">データベース</div><div class="sub">蔵書データ（見えない）</div></div>
+        </div>
+        <div class="comm-log">
+          <h3>舞台裏で起きていること（通信ログ）</h3>
+          <div id="logArea"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 2. API ========== -->
+  <div id="modeApi" class="mode-section" hidden>
+    <p class="app-lead">APIは、アプリの機能やデータを<strong>他のプログラムからも使えるようにする窓口</strong>です。多くのAPIは、利用者を確認するための<strong>APIキー（鍵）</strong>がないと使えません。ここでは、図書館の蔵書検索APIを模した体験ができます。</p>
+
+    <div class="api-step">
+      <h3><span class="stepno">1</span>APIキーを発行する</h3>
+      <button id="issueKeyBtn" class="api-btn" type="button">APIキーを発行</button>
+      <span id="keyBox" class="keybox">（まだ発行されていません）</span>
+      <p class="api-note">実際のサービス（カーリルなど）でも、開発者登録をするとAPIキーが無料で発行されます。<strong>キーは自分専用の合言葉なので、他人に教えてはいけません。</strong></p>
+    </div>
+
+    <div class="api-step">
+      <h3><span class="stepno">2</span>リクエストを組み立てて送る</h3>
+      <label>調べたい本：
+        <select id="apiTitle" class="api-select">
+          <option>こころ</option>
+          <option>銀河鉄道の夜</option>
+          <option>坊っちゃん</option>
+          <option>羅生門</option>
+        </select>
+      </label>
+      <div class="urlbox"><span>https://api.tosho-demo.jp/check?appkey=</span><span class="pk" id="urlKey">（未発行）</span><span>&amp;title=</span><span id="urlTitle"></span></div>
+      <p class="api-note">URLの「?」以降に、<span style="color:#b3452f; font-weight:700;">appkey（APIキー）</span>と「調べたい本」の情報を付けて送ります。</p>
+      <p style="margin-top:10px;">
+        <button id="sendBtn" class="api-btn" type="button">キーを付けて送信</button>
+        <button id="sendNoKeyBtn" class="api-btn gray" type="button">キーなしで送信（実験）</button>
+      </p>
+    </div>
+
+    <div class="api-step">
+      <h3><span class="stepno">3</span>レスポンス（返ってくるデータ）</h3>
+      <div id="jsonBox" class="jsonbox">（まだ送信していません）</div>
+      <p class="api-note">データは <strong>JSON（ジェイソン）</strong>という形式で返ってきます。人間向けの画面ではなく「プログラムが読みやすい形」なのがポイントです。カーリルの蔵書検索APIも、この仕組みで動いています。</p>
+    </div>
+  </div>
+
+  <!-- ========== 3. クイズ ========== -->
+  <div id="modeQuiz" class="mode-section" hidden>
+    <p class="app-lead">図書館アプリ（OPAC）のそれぞれの部品は、「フロントエンド」「バックエンド」「データベース」のどの層のものでしょうか。ボタンを押して仕分けてみましょう。</p>
+    <div class="quiz-score">正解数：<span id="quizScore">0</span> ／ <span id="quizTotal">9</span>　<button id="quizReset" class="api-btn gray" type="button" style="font-size:13px; padding:5px 14px;">もう一度</button></div>
+    <div id="quizArea"></div>
+  </div>
+</main>
+
+<footer>
+  <p class="footer-note">※ この体験はすべてブラウザ内で動いています（実際のサーバーとは通信していません）。</p>
+</footer>
+
+<script>
+// このページはすべてローカルの固定データで動作します。
+// ユーザー入力を画面に出すときは、textContent または createTextNode のみを使います（XSS対策）。
+
+// ---------- タブ切り替え ----------
+const sections = {
+  opac: document.getElementById('modeOpac'),
+  api: document.getElementById('modeApi'),
+  quiz: document.getElementById('modeQuiz'),
+};
+document.querySelectorAll('.mode-tabs .activity-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tabs .activity-tab').forEach(b => b.classList.toggle('active', b === btn));
+    Object.entries(sections).forEach(([k, el]) => { el.hidden = (k !== btn.dataset.mode); });
+  });
+});
+
+// ---------- 小さなDOMヘルパー（innerHTML不使用） ----------
+function el(tag, className, text) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+// ---------- 1. OPAC ----------
+const BOOKS = [
+  { title: 'こころ', author: '夏目漱石', call: '913.6/ナ', ok: true },
+  { title: '坊っちゃん', author: '夏目漱石', call: '913.6/ナ', ok: true },
+  { title: '吾輩は猫である', author: '夏目漱石', call: '913.6/ナ', ok: false },
+  { title: '銀河鉄道の夜', author: '宮沢賢治', call: '913.6/ミ', ok: true },
+  { title: '注文の多い料理店', author: '宮沢賢治', call: '913.6/ミ', ok: true },
+  { title: '羅生門', author: '芥川龍之介', call: '913.6/ア', ok: false },
+  { title: '蜘蛛の糸', author: '芥川龍之介', call: '913.6/ア', ok: true },
+  { title: '走れメロス', author: '太宰治', call: '913.6/ダ', ok: true },
+  { title: '人間失格', author: '太宰治', call: '913.6/ダ', ok: false },
+  { title: '檸檬', author: '梶井基次郎', call: '913.6/カ', ok: true },
+];
+const logArea = document.getElementById('logArea');
+const opacBtn = document.getElementById('opacBtn');
+const opacQuery = document.getElementById('opacQuery');
+const opacResults = document.getElementById('opacResults');
+const speedSel = document.getElementById('speedSel');
+const nodes = {
+  front: document.getElementById('nodeFront'),
+  back: document.getElementById('nodeBack'),
+  db: document.getElementById('nodeDb'),
+};
+let running = false;
+
+function highlight(key) {
+  Object.entries(nodes).forEach(([k, n]) => n.classList.toggle('active', k === key));
+}
+function addLog(no, text, code) {
+  const entry = el('div', 'log-entry');
+  entry.appendChild(el('span', 'no', String(no)));
+  const body = el('span');
+  body.appendChild(document.createTextNode(text));
+  if (code) body.appendChild(el('span', 'code', code));
+  entry.appendChild(body);
+  logArea.appendChild(entry);
+  requestAnimationFrame(() => entry.classList.add('show'));
+}
+function renderResults(hits) {
+  opacResults.textContent = '';
+  if (!hits.length) {
+    opacResults.appendChild(el('p', 'waiting', '該当する資料は見つかりませんでした（0件）。'));
+    return;
+  }
+  hits.forEach(b => {
+    const item = el('div', 'result-item');
+    item.appendChild(el('div', 'ttl', b.title));
+    const meta = el('div', 'meta');
+    meta.appendChild(document.createTextNode(b.author + '　請求記号：' + b.call + '　'));
+    meta.appendChild(el('span', b.ok ? 'status-ok' : 'status-out', b.ok ? '貸出可' : '貸出中'));
+    item.appendChild(meta);
+    opacResults.appendChild(item);
+  });
+}
+function runSearch(q) {
+  if (running) return;
+  q = q.trim();
+  if (!q) { alert('検索語を入力してください'); return; }
+  running = true;
+  opacBtn.disabled = true;
+  logArea.textContent = '';
+  opacResults.textContent = '';
+  opacResults.appendChild(el('p', 'waiting', '検索中…'));
+  const hits = BOOKS.filter(b => b.title.includes(q) || b.author.includes(q));
+  const wait = Number(speedSel.value);
+  const steps = [
+    ['front', 1, '【フロントエンド】検索ボタンが押され、リクエストを送信', 'GET /search?q=' + encodeURIComponent(q)],
+    ['back', 2, '【バックエンド】Webサーバーがリクエストを受け取り、検索処理を開始', null],
+    ['db', 3, '【データベース】蔵書データに問い合わせ', "SELECT * FROM books WHERE title LIKE '%" + q + "%' OR author LIKE '%" + q + "%'"],
+    ['back', 4, '【バックエンド】結果 ' + hits.length + ' 件を受け取り、画面用のデータに整える', null],
+    ['front', 5, '【フロントエンド】結果を受信し、画面に表示', null],
+  ];
+  steps.forEach(([node, no, text, code], i) => {
+    setTimeout(() => {
+      highlight(node);
+      addLog(no, text, code);
+      if (i === steps.length - 1) {
+        renderResults(hits);
+        setTimeout(() => { highlight(null); running = false; opacBtn.disabled = false; }, wait);
+      }
+    }, wait * i);
+  });
+}
+opacBtn.addEventListener('click', () => runSearch(opacQuery.value));
+opacQuery.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(opacQuery.value); });
+document.querySelectorAll('.try').forEach(b => b.addEventListener('click', () => {
+  opacQuery.value = b.dataset.q;
+  runSearch(b.dataset.q);
+}));
+
+// ---------- 2. API ----------
+let apiKey = null;
+const API_DATA = {
+  'こころ': { isbn: '9784101010137', 蔵書: 'あり', 貸出: '可能', 所蔵館: '中央図書館' },
+  '銀河鉄道の夜': { isbn: '9784101092058', 蔵書: 'あり', 貸出: '貸出中', 所蔵館: '中央図書館' },
+  '坊っちゃん': { isbn: '9784101010021', 蔵書: 'あり', 貸出: '可能', 所蔵館: '駅前分館' },
+  '羅生門': { isbn: '9784101025018', 蔵書: 'なし', 貸出: '－', 所蔵館: '－' },
+};
+const keyBox = document.getElementById('keyBox');
+const urlKey = document.getElementById('urlKey');
+const urlTitle = document.getElementById('urlTitle');
+const apiTitle = document.getElementById('apiTitle');
+const jsonBox = document.getElementById('jsonBox');
+
+function updateUrl() {
+  urlKey.textContent = apiKey ? apiKey : '（未発行）';
+  urlTitle.textContent = encodeURIComponent(apiTitle.value);
+}
+document.getElementById('issueKeyBtn').addEventListener('click', () => {
+  apiKey = 'demo-' + Math.random().toString(16).slice(2, 10);
+  keyBox.textContent = apiKey;
+  updateUrl();
+});
+apiTitle.addEventListener('change', updateUrl);
+function showJson(obj, isErr) {
+  jsonBox.textContent = JSON.stringify(obj, null, 2);
+  jsonBox.classList.toggle('err', isErr);
+  jsonBox.classList.toggle('ok', !isErr);
+}
+document.getElementById('sendBtn').addEventListener('click', () => {
+  if (!apiKey) {
+    showJson({ status: 401, error: 'APIキーが指定されていません。まず手順1でキーを発行してください。' }, true);
+    return;
+  }
+  const d = API_DATA[apiTitle.value];
+  showJson({ status: 200, title: apiTitle.value, isbn: d.isbn, 蔵書: d.蔵書, 貸出: d.貸出, 所蔵館: d.所蔵館 }, false);
+});
+document.getElementById('sendNoKeyBtn').addEventListener('click', () => {
+  showJson({ status: 401, error: '不正なリクエストです（APIキーがありません）' }, true);
+});
+updateUrl();
+
+// ---------- 3. クイズ ----------
+const QUIZ = [
+  ['検索ボタンや入力欄', 'front'], ['本の一覧が並ぶ画面', 'front'], ['画面の色やデザイン', 'front'],
+  ['検索の処理', 'back'], ['貸出・返却の処理', 'back'], ['ログインの確認', 'back'],
+  ['蔵書のデータ', 'db'], ['利用者のデータ', 'db'], ['貸出の記録', 'db'],
+];
+const LAYERS = [['front', 'フロントエンド'], ['back', 'バックエンド'], ['db', 'データベース']];
+const quizArea = document.getElementById('quizArea');
+const quizScore = document.getElementById('quizScore');
+let score = 0;
+
+function buildQuiz() {
+  score = 0;
+  quizScore.textContent = '0';
+  quizArea.textContent = '';
+  const items = QUIZ.slice().sort(() => Math.random() - 0.5);
+  items.forEach(([q, ans]) => {
+    const row = el('div', 'quiz-row');
+    row.appendChild(el('span', 'q', q));
+    const mark = el('span', 'mark', '');
+    LAYERS.forEach(([k, label]) => {
+      const btn = el('button', '', label);
+      btn.type = 'button';
+      btn.dataset.k = k;
+      btn.addEventListener('click', () => {
+        const correct = btn.dataset.k === ans;
+        row.querySelectorAll('button').forEach(b => {
+          b.disabled = true;
+          if (b.dataset.k === ans) b.classList.add('correct');
+        });
+        if (!correct) btn.classList.add('wrong');
+        mark.textContent = correct ? '○' : '×';
+        mark.style.color = correct ? '#1d7a3a' : '#b3452f';
+        if (correct) { score++; quizScore.textContent = String(score); }
+      });
+      row.appendChild(btn);
+    });
+    row.appendChild(mark);
+    quizArea.appendChild(row);
+  });
+}
+document.getElementById('quizReset').addEventListener('click', buildQuiz);
+buildQuiz();
+</script>
+</body>
+</html>
